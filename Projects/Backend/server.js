@@ -2,6 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 const app = express();
 
 // ==========================
@@ -10,6 +11,16 @@ const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ==========================
+// 環境変数読み込み
+// ==========================
+
+// CommonJSでは __dirname がそのまま使えたが
+// ESMでは上記処理が必要
+dotenv.config({
+  path: path.resolve(__dirname, '.env')
+});
 
 
 //ポート設定
