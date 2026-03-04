@@ -24,7 +24,7 @@ dotenv.config({
 
 
 //ポート設定
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 
 // ==========================
@@ -51,6 +51,7 @@ fs.readdirSync(routesDir).forEach(async (file) => {
   const routeModule = await import(
     path.join(routesDir, file)
   );
+  console.log('routeModule:', routeModule);
 
   // default export を取得
   const route = routeModule.default;
