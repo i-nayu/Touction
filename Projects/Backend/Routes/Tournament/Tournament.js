@@ -23,7 +23,6 @@ import GetAddress from '../../Tools/GetAddress.js';
 // ==========================
 // 環境変数の読み込み
 // ==========================
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,11 +64,13 @@ router.get('/PhotoList', async (req, res) => {
             []
         );
 
-        const expireTime = await DBPerf(
+        const expireResult = await DBPerf(
             "Get ExpireTime",
             `SELECT ExpireTime FROM Mosaic`,
             []
         );
+
+        const expireTime = expireResult[0]?.ExpireTime ?? null;
 
         res.status(200).json({
             theme,
@@ -90,12 +91,11 @@ router.post('/Upload', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), upload.fiel
     console.log("Tournament-/Upload-API is running");
 
     try {
-        const userID = req.auth.userId;
-        const { comment } = req.body;
-        console.log("Received Upload request:", { userID, comment });
-        if (!userID || !comment) {
+        const { privateKey, comment } = req.body;
+        console.log("Received Upload request:", { privateKey, comment });
+        if (!privateKey || !comment) {
             console.log("Missing required fields in Upload request");
-            return res.status(400).json({ message: "UserID and Comment are required" });
+            return res.status(400).json({ message: "privateKey and Comment are required" });
         }
 
         if (!req.files?.photo) {
@@ -103,6 +103,15 @@ router.post('/Upload', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), upload.fiel
             return res.status(400).json({ message: "Photo is required" });
         }
 
+        const address = GetAddress("testnet", privateKey);
+        const userResult = await DBPerf("Get BidUserID",
+            "SELECT UserID FROM Identify WHERE Address = ?",
+            [address]
+        );
+        if (!userResult.length) {
+            return res.status(404).json({ message: "ユーザーが存在しません" });
+        }
+        const userId = userResult[0].UserID;
         const PhotoPath = SaveIcon(req.files.photo[0], "photographs");
         console.log("Photo saved at:", PhotoPath);
 
@@ -110,7 +119,7 @@ router.post('/Upload', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), upload.fiel
         const result = await DBPerf(
             "INSERT Photos",
             "INSERT INTO Photos(UserID, PhotoPath, Comment) VALUES (?, ?, ?)",
-            [userID, PhotoPath, comment]
+            [userId, PhotoPath, comment]
         );
 
         res.status(201).json({
@@ -132,25 +141,35 @@ router.post('/Upload', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), upload.fiel
 router.post('/Vote', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), async (req, res) => {
     console.log("Tournament-/Vote-API is running");
 
-    const PhotoID = req.body.PhotoId;
-    const privateKey = "";
+    const { privateKey, photoId } = req.body;
+    console.log("Received Upload request:", { privateKey, photoId });
+    if (!privateKey || !photoId) {
+        console.log("Missing required fields in Upload request");
+        return res.status(400).json({ message: "privateKey and photoId are required" });
+    }
     const userAddress = GetAddress("testnet", privateKey); //投票者のアドレス
-    const serverAddress = GetAddress("testnet", process.env.TOURNAMENT_PRIVATE_KEY);
     const nodeUrl = 'https://sym-test-01.opening-line.jp:3001';
 
 
     try {
-        //PhotoIDからaddressを取得
-        const address = await DBPerf(
+        //投票先のaddressを取得
+        const Address = await DBPerf(
             "Get address",
             "SELECT I.Address FROM Photos P JOIN Identify I ON P.UserID = I.UserID WHERE P.PhotoID = ?; ",
-            [PhotoID]
+            [photoId]
         );
-        if (!address.length) {
+        if (!Address.length) {
             console.log("[Vote] Photo Not Found");
             return res.status(404).json({ message: "投票できる写真がありません" });
         }
-        const SendToAddress = address[0].Address;
+        const SendToAddress = Address[0].Address;
+
+        //投票者の情報を取得
+        const users = await DBPerf(
+            "Get users",
+            "SELECT I.UserID, v.Vote FROM Vote v JOIN Identify I ON v.UserID = I.UserID WHERE I.Address = ?; ",
+            [userAddress]
+        );
 
         const mosaicId = await DBPerf(
             "Get MosaicId",
@@ -165,9 +184,12 @@ router.post('/Vote', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), async (req, r
 
         //投票権があるかどうか
         try {
-            const currentAmount = await LeftToken(userAddress, mosaicIdHex, nodeUrl);
+            if (!users.length) {
+                return res.status(404).json({ message: "ユーザーが見つかりません" });
+            }
+            const voteRight = users[0].Vote;
 
-            if (currentAmount < 1n) {
+            if (!voteRight) {
                 console.log("No Vote to Right");
                 return res.status(400).json({ message: "投票権がありません" });
             }
@@ -198,6 +220,7 @@ router.post('/Vote', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), async (req, r
 
             //投票の署名とアナウンス
             console.log("[Vote] Announcing Vote Transaction...");
+
             //手数料が足りているかどうか
             const currencyMosaicId = await GetCurrencyMosaicId(nodeUrl);
             const xymAmount = await LeftToken(userAddress, currencyMosaicId, nodeUrl);
@@ -221,6 +244,13 @@ router.post('/Vote', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), async (req, r
             console.log("[Vote] Vote To Server TX Hash:", voteResult.hash);
             console.log("[Vote] Vote To Server TX Announced Successfully!");
 
+            const userId = users[0].UserID;
+            await DBPerf(
+                "Update voteRight",
+                "UPDATE Vote SET Vote = false WHERE UserID = ?",
+                [userId]
+            );
+
             res.json({
                 message: "Vote To Server successful",
                 txHash: voteResult.hash
@@ -230,7 +260,7 @@ router.post('/Vote', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), async (req, r
             return res.status(500).json({ message: "Internal Server Error: サーバーエラーが発生しました。" });
         }
 
-        
+
 
     } catch (txErr) {
         console.error("[Vote] Vote TX Error:", txErr);
