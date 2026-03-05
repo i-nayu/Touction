@@ -44,7 +44,7 @@ router.get('/', (req, res) => {
 
     // フロントエンドのビルド済みHTMLを返す
     res.sendFile(
-        path.join(__dirname, "..", "..", "..", "", "Frontend", "dist", "index.html")
+        path.join(__dirname, "..", "..", "..", "..", "Frontend", "dist", "index.html")
     );
 }
 );

@@ -56,10 +56,7 @@ router.post('/Submit', async (req, res) => {
             return res.status(400).json({ message: "Bad Request: userId が不足しています" })
         }
 
-        // ==========================
         // ユーザー重複チェック
-        // ==========================
-
         const exist = await DBPerf(
             "Duplicate Check For UserID",
             "SELECT * FROM Identify WHERE UserID = ?",
@@ -72,9 +69,7 @@ router.post('/Submit', async (req, res) => {
             });
         }
 
-        // =====================================================
         // Symbolブロックチェーン用アカウント生成
-        // =====================================================
         const facade = new SymbolFacade('testnet');
 
         const privateKey = PrivateKey.random();
@@ -96,20 +91,14 @@ router.post('/Submit', async (req, res) => {
             sameSite: 'strict'
         });
 
-        // =====================================================
         // DB保存
-        // =====================================================
-
         await DBPerf(
             "Insert Into Identify",
             "INSERT INTO Identify (UserID, Address) VALUES (?, ?)",
             [userId, address]
         );
 
-        // =====================================================
         // 秘密鍵をQRコード化
-        // =====================================================
-
         let qr;
 
         try {
@@ -125,10 +114,8 @@ router.post('/Submit', async (req, res) => {
             });
         }
 
-        // =====================================================
-        // 登録成功
-        // =====================================================
 
+        // 登録成功
         res.status(200).json({
             qrCode: qr
         });
