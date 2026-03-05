@@ -4,13 +4,16 @@ CREATE TABLE Identify (
 );
 
 CREATE TABLE Mosaic (
-    MosaicID    VARCHAR(255) PRIMARY KEY,
-    MosaicName  VARCHAR(100) UNIQUE NOT NULL
+    MosaicID VARCHAR(255) NOT NULL PRIMARY KEY,
+    CreateTime DATETIME NOT NULL, -- トーナメント作成日時
+    ExpireTime DATETIME NOT NULL -- トーナメント終了日時
 );
 
 CREATE TABLE Photos (
-    UserID        VARCHAR(255) PRIMARY KEY,
-    PhotoPath     VARCHAR(255),
-    comment       TEXT
+    PhotoID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID VARCHAR(255),
+    FOREIGN KEY (UserID) REFERENCES Identify(UserID),
+    PhotoPath VARCHAR(500),
+    Comment TEXT,
+    Amount INT
 );
-
