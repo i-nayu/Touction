@@ -5,14 +5,13 @@ import ConfirmButton from "../../Components/ConfirmButton/ConfirmButton";
 
 function Register() {
   const [username, setUsername] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setError] = useState("");
+  const [, setSuccess] = useState("");
+  const [, setIsSubmitting] = useState(false);
+  const [qrImage, setQrImage] = useState("/qr.png");
 
-  const handleSubmit = async () => {
-    setError("");
-    setSuccess("");
-
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
     if (!username) {
       setError("ユーザー名を入力してください。");
       return;
@@ -26,8 +25,25 @@ function Register() {
       });
 
       console.log("送信データ:", { username });
-      setSuccess("アカウントを作成しました。ログインしてください。");
-      setUsername("");
+      const res = await fetch("/Register/Submit", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username }),
+      });
+
+      const data = await res.json();
+      console.log("サーバーからのレスポンス:", data);
+
+      if (!res.ok) {
+        setError("登録に失敗しました。もう一度お試しください。");
+      } else {
+        setQrImage(data.qrImageUrl);
+        setSuccess("アカウントを作成しました。ログインしてください。");
+        setUsername("");
+      }
     } catch (err) {
       setError("登録に失敗しました。もう一度お試しください。");
     } finally {
@@ -53,12 +69,17 @@ return (
               onChange={(e) => setUsername(e.target.value)}
             />
           </div>
-
           <div className="button-group">
             <ConfirmButton label="登録" type="submit" />
           </div>
-
         </div>
+        {qrImage && (
+          <img src={qrImage} alt="login qr" />
+        )}
+        <a href={qrImage} download="loginQR.png">
+          <button>QRコードをダウンロード</button>
+        </a>
+        
       </div>
     </form>
   </div>
