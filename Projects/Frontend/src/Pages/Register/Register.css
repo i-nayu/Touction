@@ -1,105 +1,104 @@
-* {
-    /*初期設定*/
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-    height: 100%;
-    width: 100%;
-}
-
 .register-page {
   min-height: 100vh;
-  background-color: #ECECEC;
-
-  display: flex;
-  flex-direction: column;
+  width: min(1120px, calc(100vw - 48px));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+  color: #ffffff;
 }
 
-form {
-  flex: 1;                  /* 空きスペース全部使う */
-  display: flex;
-  justify-content: center;  /* 横中央 */
-  align-items: center;      /* 縦中央 */
-}
-
-/* タイトル部分 */
 .register-tab {
-  margin-bottom: 60px;
-  background-color: #C7EA74;
+  margin-bottom: 28px;
 }
 
 .register-tab h1 {
-  margin-left: 120px;
-  padding: 10px;
-  font-size: 64px;
+  font-size: 30px;
   font-weight: 600;
+  margin: 0;
 }
 
-/* フォーム外枠 */
+.register-page form {
+  margin: 0;
+}
+
 .register-container {
-  width: 1000px;
-  height: 600px;
-  padding: 40px;
-  border-radius: 16px;
-  background: #ECECEC;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  width: 100%;
+  max-width: 720px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 24px;
 }
 
-/* 説明文 */
-.register-form{
-    /*大きさ設定*/
-    width: 80%;
-    height: 80%;
-
-    /*位置設定*/
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+.register-form {
+  display: flex;
+  flex-direction: column;
 }
 
-/* 説明文 */
-.register-form p {
-  margin-bottom: 24px;
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-/* 入力グループ */
 .input-group {
   display: flex;
   flex-direction: column;
-  margin-bottom: 20px;
+  gap: 8px;
 }
 
-/* ラベル */
 .input-group label {
-  font-size: 60px;
-  color: black;
-  margin-bottom: 6px;
+  font-size: 14px;
+  opacity: 0.85;
 }
 
-/* input自体（InputFieldの中でclass付けてもOK） */
-.input-group input {
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: none;
-  outline: none;
+.button-group {
+  margin-top: 18px;
+}
+
+.register-message {
+  margin: 14px 0 0;
   font-size: 14px;
 }
 
-/* フォーカス時 */
-.input-group input:focus {
-  box-shadow: 0 0 0 2px #6c8cff;
+.register-error {
+  color: #ffb3b3;
 }
 
-/* ボタンエリア */
-.button-group {
-  margin-top: 20px;
+.register-success {
+  color: #b9ffbc;
+}
+
+.qr-code-area {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qr-code-area p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.qr-code-image {
+  width: 220px;
+  height: 220px;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+@media (max-width: 900px) {
+  .register-container {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .register-page {
+    width: calc(100vw - 24px);
+    padding-top: 20px;
+  }
+
+  .register-tab h1 {
+    font-size: 24px;
+  }
+
+  .register-container {
+    padding: 18px;
+  }
 }
