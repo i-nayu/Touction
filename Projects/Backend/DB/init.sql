@@ -26,3 +26,10 @@ CREATE TABLE Vote (
     Vote BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+CEATE TABLE BOUGHT (
+    PhotoID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID VARCHAR(255), --購入者
+    PhotoPath VARCHAR(500),
+    Amount INT --購入額
+)
+

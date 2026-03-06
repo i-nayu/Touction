@@ -1,8 +1,24 @@
+/*==========Manual)==========
+# Input
+facade: 
+signerPrivateKey: 送信者の秘密鍵
+mosaicId: 
+users: 送信対象のアドレスと送信したいモザイク量
+
+# Output
+生成したトランザクションを返す
+
+# Detail
+複数のトランザクションをまとめて作成する関数
+トランザクション作成のみ
+モザイク量は固定
+========== Manual ==========*/
+
 async function SendTokens({
     facade,          // SymbolFacade
     signerPrivateKey,// 配布元の秘密鍵
     mosaicId,        // 配布するモザイクID
-    users            // 配布対象ユーザー [{ Address }, ...]
+    users            // 配布対象ユーザー [{ address }, ...]
 }) {
     // サイン用の KeyPairを作成
     const signer = facade.createAccount(signerPrivateKey);
@@ -12,8 +28,8 @@ async function SendTokens({
         facade.transactionFactory.create({
             type: 'transfer_transaction_v1',
             signerPublicKey: signer.publicKey,
-            recipientAddress: user.Address,
-            mosaics: [{ mosaicId: BigInt('0x' + mosaicId), amount: 1n }],
+            recipientAddress: user.address,
+            mosaics: [{ mosaicId: BigInt('0x' + mosaicId), amount: BigInt(user.amount) }],
             deadline: facade.network.fromDatetime(new Date()).addHours(2).timestamp
         })
     );

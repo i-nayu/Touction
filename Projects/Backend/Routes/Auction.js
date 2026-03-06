@@ -53,7 +53,7 @@ router.get('/Auction', async (req, res) => {
         //写真リスト + 入札額を取得
         const photos = await DBPerf(
             "Get photos",
-            "SELECT PhotoID, UserID, PhotoPath, Amount FROM Photos",
+            "SELECT PhotoID, PhotoPath, Amount FROM Photos",
             []
         );
 
@@ -68,6 +68,7 @@ router.get('/Auction', async (req, res) => {
                     [photo.UserID]
                 );
                 const userAddress = addressResult[0]?.Address || null;
+
 
                 const voteCount = userAddress
                     ? await LeftToken(userAddress, currencyMosaicId, nodeUrl)
