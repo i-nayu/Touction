@@ -1,5 +1,6 @@
 import "./Tournament.css";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import PhotoButton from "../../Components/PhotoButton/PhotoButton";
 import ConfirmButton from "../../Components/ConfirmButton/ConfirmButton";
@@ -21,6 +22,7 @@ const tournamentPhotos: TournamentPhoto[] = [
 ];
 
 function Tournament() {
+  const navigate = useNavigate();
   const [deadlineTime, setDeadlineTime] = useState<string | number>("読み込み中...");
   const [votesLeft] = useState(INITIAL_VOTES_LEFT);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -150,9 +152,9 @@ function Tournament() {
     <main className="tournament-page">
       <header className="tournament-tab">
         <h1 className="tournament-title">トーナメント投票</h1>
-        <ConfirmButton label="オークション" type="submit"/>
-        <ConfirmButton label="購入一覧" type="submit"/>
-        <ConfirmButton label="アップロード" type="submit"/>
+        <ConfirmButton label="オークション" type="button" onClick={() => navigate("/auction")} />
+        <ConfirmButton label="購入一覧" type="button" onClick={() => navigate("/auction-buy")} />
+        <ConfirmButton label="アップロード" type="button" onClick={() => navigate("/upload-photo")} />
       </header>
       <section className="status-row">
           <article className="status-card">
