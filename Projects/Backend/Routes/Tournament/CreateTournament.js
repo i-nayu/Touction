@@ -31,7 +31,12 @@ cron.schedule('0 0 */7 * *', async () => {
         });
 
         //DBからアドレスを取得
-        const users = await DBPerf("Get Users", "SELECT Address FROM Users", []);
+        const usersResult = await DBPerf("Get Users", "SELECT Address FROM Users", []);
+        const users = usersResult.map(user => ({
+            address: user.Address,
+            amount: 1n
+        }));
+
         const userCount = users.length;
         if (userCount === 0) {
             console.log("[Create tournament] No users found. Skip.");
@@ -140,7 +145,7 @@ cron.schedule('0 0 */7 * *', async () => {
                 return;
             }
 
-            // 署名とアナウンス
+            // 投票権配布の署名とアナウンス
             try {
                 console.log("[Create tournament] Announcing Send Voting Token Transaction...");
 

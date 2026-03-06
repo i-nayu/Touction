@@ -77,19 +77,8 @@ router.post('/Submit', async (req, res) => {
         const address = account.address.toString();
         const privateKeyString = privateKey.toString();
 
-        console.log("秘密鍵:", privateKeyString);
         console.log("アドレス:", address);
 
-        // 4. Cookie発行
-        CreateCookie({
-            res,
-            cookieName: 'LOGIN_TOKEN',
-            payload: { userId, address: address },
-            secretKey: process.env.LOGIN_SECRET,
-            deadlineHours: 24, // 1日有効
-            httpOnly: true,
-            sameSite: 'strict'
-        });
 
         // DB保存
         await DBPerf(

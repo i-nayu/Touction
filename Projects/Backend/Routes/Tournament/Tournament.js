@@ -92,7 +92,6 @@ router.post('/Upload', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), upload.fiel
 
     try {
         const { privateKey, comment } = req.body;
-        console.log("Received Upload request:", { privateKey, comment });
         if (!privateKey || !comment) {
             console.log("Missing required fields in Upload request");
             return res.status(400).json({ message: "privateKey and Comment are required" });
@@ -142,7 +141,6 @@ router.post('/Vote', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), async (req, r
     console.log("Tournament-/Vote-API is running");
 
     const { privateKey, photoId } = req.body;
-    console.log("Received Upload request:", { privateKey, photoId });
     if (!privateKey || !photoId) {
         console.log("Missing required fields in Upload request");
         return res.status(400).json({ message: "privateKey and photoId are required" });
@@ -197,7 +195,7 @@ router.post('/Vote', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), async (req, r
 
         } catch (txErr) {
             console.error("[Vote] Vote Get Error:", txErr);
-            return res.status(500).json({ message: "Internal Server Error: サーバーエラーが発生しました。" });
+            return res.status(500).json({ message: "Internal TX Error: トランザクションエラーが発生しました。" });
         }
 
         //投票（トークン送信）トランザクションを作成
@@ -257,7 +255,7 @@ router.post('/Vote', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), async (req, r
             });
         } catch (txErr) {
             console.error("[Vote] Vote To Server TX Error:", txErr);
-            return res.status(500).json({ message: "Internal Server Error: サーバーエラーが発生しました。" });
+            return res.status(500).json({ message: "Internal TX Error: トランザクションエラーが発生しました。" });
         }
 
 
