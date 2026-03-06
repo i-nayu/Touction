@@ -87,7 +87,7 @@ router.get('/PhotoList', async (req, res) => {
 // =====================================================================
 // 写真追加API
 // =====================================================================
-router.post('/Upload', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), upload.fields([{ name: "photo", maxCount: 1 }]), async (req, res) => {
+router.post('/Upload', async (req, res) => {
     console.log("Tournament-/Upload-API is running");
 
     try {
@@ -137,7 +137,7 @@ router.post('/Upload', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), upload.fiel
 // =====================================================================
 // 投票処理API
 // =====================================================================
-router.post('/Vote', VCM('LOGIN_TOKEN', process.env.LOGIN_SECRET), async (req, res) => {
+router.post('/Vote', async (req, res) => {
     console.log("Tournament-/Vote-API is running");
 
     const { privateKey, photoId } = req.body;
