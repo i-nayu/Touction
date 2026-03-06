@@ -4,15 +4,15 @@ import InputField from "../../Components/InputField/InputField";
 import ConfirmButton from "../../Components/ConfirmButton/ConfirmButton";
 
 function Register() {
-  const [username, setUsername] = useState("");
+  const [userId, setUserId] = useState("");
   const [, setError] = useState("");
   const [, setSuccess] = useState("");
   const [, setIsSubmitting] = useState(false);
-  const [qrImage, setQrImage] = useState("/qr.png");
+  const [qrCode, setQrCode] = useState("/qr.png");
 
   const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
-    if (!username) {
+    if (!userId) {
       setError("ユーザー名を入力してください。");
       return;
     }
@@ -24,14 +24,14 @@ function Register() {
         setTimeout(resolve, 800);
       });
 
-      console.log("送信データ:", { username });
+      console.log("送信データ:", { userId });
       const res = await fetch("/Register/Submit", {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ userId }),
       });
 
       const data = await res.json();
@@ -40,9 +40,9 @@ function Register() {
       if (!res.ok) {
         setError("登録に失敗しました。もう一度お試しください。");
       } else {
-        setQrImage(data.qrImageUrl);
+        setQrCode(data.qrCode);
         setSuccess("アカウントを作成しました。ログインしてください。");
-        setUsername("");
+        setUserId("");
       }
     } catch (err) {
       setError("登録に失敗しました。もう一度お試しください。");
@@ -66,17 +66,17 @@ return (
               name="username"
               placeholder="ユーザー名を入力"
               type="text"
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => setUserId(e.target.value)}
             />
           </div>
           <div className="button-group">
             <ConfirmButton label="登録" type="submit" />
           </div>
         </div>
-        {qrImage && (
-          <img src={qrImage} alt="login qr" />
+        {qrCode && (
+          <img src={qrCode} alt="login qr" />
         )}
-        <a href={qrImage} download="loginQR.png">
+        <a href={qrCode} download="loginQR.png">
           <button>QRコードをダウンロード</button>
         </a>
         

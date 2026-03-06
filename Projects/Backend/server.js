@@ -34,33 +34,25 @@ const PORT = process.env.PORT || 5001;
 // Routesディレクトリの絶対パス
 const routesDir = path.join(__dirname, 'Routes');
 
-// ディレクトリ内のファイル一覧取得
-fs.readdirSync(routesDir).forEach(async (file) => {
+const files = fs.readdirSync(routesDir);
 
-  // .jsファイルのみ対象
-  if (!file.endsWith('.js')) return;
+for (const file of files) {
 
-  // ファイル名から拡張子を除去
+  if (!file.endsWith('.js')) continue;
+
   const routeName = path.basename(file, '.js');
-
-  // エンドポイントを自動生成
-  // 例: Register.js → /Register
   const routePath = `/${routeName}`;
 
-  // ESMでは require は使えないため dynamic import
   const routeModule = await import(
     path.join(routesDir, file)
   );
-  console.log('routeModule:', routeModule);
 
-  // default export を取得
   const route = routeModule.default;
 
-  // ルーティング登録
   app.use(routePath, route);
 
   console.log(`Route mounted: ${routePath}`);
-});
+}
 
 
 // ==========================
