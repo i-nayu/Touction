@@ -4,14 +4,14 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 // symbol-sdk v3
-import { SymbolFacade } from 'symbol-sdk';
+import { SymbolFacade } from 'symbol-sdk/symbol';
 
 //関数読み込み
-import DBPerf from '../../Tools/DBPerf.js';
-import SignAndAnnounce from '../../Tools/SignAndAnnounce.js';
-import SendTokens from '../../Tools/SendTokens.js'; //複数の相手にまとめて送信する関数
-import GetCurrencyMosaicId from '../../Tools/GetCurrencyMosaicId.js';
-import GetAddress from '../../Tools/GetAddress.js';
+import DBPerf from '../Tools/DBPerf.js';
+import SignAndAnnounce from '../Tools/SignAndAnnounce.js';
+import SendTokens from '../Tools/SendTokens.js'; //複数の相手にまとめて送信する関数
+import GetCurrencyMosaicId from '../Tools/GetCurrencyMosaicId.js';
+import GetAddress from '../Tools/GetAddress.js';
 
 // ==========================
 // 環境変数の読み込み

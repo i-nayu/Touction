@@ -5,9 +5,9 @@ import { fileURLToPath } from 'url';
 
 //関数読み込み
 import DBPerf from '../Tools/DBPerf.js';
-import LeftToken from '../../Tools/LeftToken.js';
-import GetCurrencyMosaicId from '../../Tools/GetCurrencyMosaicId.js';
-import GetAddress from '../../Tools/GetAddress.js';
+import LeftToken from '../Tools/LeftToken.js';
+import GetCurrencyMosaicId from '../Tools/GetCurrencyMosaicId.js';
+import GetAddress from '../Tools/GetAddress.js';
 
 // ==========================
 // 環境変数の読み込み

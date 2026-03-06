@@ -14,7 +14,7 @@ import axios from 'axios';
 
 const DEFAULT_TESTNET_CURRENCY_MOSAIC_ID = '72C0212E67A08BCE';
 
-export async function GetCurrencyMosaicId(nodeUrl) {
+async function GetCurrencyMosaicId(nodeUrl) {
     try {
         const result = await axios.get(`${nodeUrl}/network/currencyMosaicId`);
         const rawId = result?.data?.mosaicId;
@@ -30,3 +30,5 @@ export async function GetCurrencyMosaicId(nodeUrl) {
         return DEFAULT_TESTNET_CURRENCY_MOSAIC_ID;
     }
 }
+
+export default GetCurrencyMosaicId;

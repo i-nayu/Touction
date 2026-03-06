@@ -17,7 +17,7 @@ import axios from 'axios';
 const DEFAULT_TESTNET_CURRENCY_MOSAIC_ID = '72C0212E67A08BCE';
 
 
-export async function LeftToken(address, mosaicIdHex, nodeUrl) {
+async function LeftToken(address, mosaicIdHex, nodeUrl) {
     const result = await axios.get(`${nodeUrl}/accounts/${address}`);
     console.log("[Debug] LeftToken API result:", result.data);
     const mosaics = result.data.account.mosaics
@@ -48,3 +48,5 @@ export async function LeftToken(address, mosaicIdHex, nodeUrl) {
 
     return target ? BigInt(target.amount) : 0n;
 }
+
+export default LeftToken;
