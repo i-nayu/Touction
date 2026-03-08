@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS Bought (
     UserID VARCHAR(255), --購入者
     PhotoPath VARCHAR(500),
     BoughtAmount INT, --購入額
-    FOREIGN KEY (UserID) REFERENCES Identify(UserID)
+    FOREIGN KEY (UserID) REFERENCES Identify(UserID),
     FOREIGN KEY (PhotoID) REFERENCES Photos(PhotoID)
 ) ENGINE = InnoDB;
 
