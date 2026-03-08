@@ -113,7 +113,7 @@ router.post('/AuctionBuy', async (req, res) => {
             for (const photo of userData) {
                 await DBPerf(
                     "Insert Into Bought",
-                    "INSERT INTO Bought (PhotoID, UserID, PhotoPath, Amount) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO Bought (PhotoID, UserID, PhotoPath, BoughtAmount) VALUES (?, ?, ?, ?)",
                     [photo.PhotoID, buyUserId, photo.PhotoPath, photo.Amount]
                 );
             }
