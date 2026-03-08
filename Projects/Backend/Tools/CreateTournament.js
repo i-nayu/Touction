@@ -40,20 +40,6 @@ async function CreateTournament() {
             deadlineHours: 24
         });
 
-        //DBからアドレスを取得
-        const usersResult = await DBPerf("Get Users", "SELECT Address FROM Identify", []);
-        const users = usersResult.map(user => ({
-            address: user.Address,
-            amount: 1n
-        }));
-        console.log("users:", users);
-
-        const userCount = users.length;
-        if (userCount === 0) {
-            console.log("[Create tournament] No users found. Skip.");
-            return;
-        }
-
 
         //供給変更トランザクションを作成
         console.log("[Create tournament] Creating Supply Change Transaction...");
@@ -66,15 +52,6 @@ async function CreateTournament() {
         });
 
 
-
-        //投票権配布
-        console.log("[Create tournament] Creating Send Voting Token Transaction...");
-        const aggregateTx = await SendTokens({
-            privateKey,
-            mosaicId: mosaicId,
-            users: users
-        });
-        console.log("AggregateTx:",aggregateTx.type.value);
 
 
 
@@ -89,14 +66,12 @@ async function CreateTournament() {
 
             const createFee = BigInt(mosaicDefinitionTx.fee);
             const supplyFee = BigInt(supplyTx.fee);
-            const votingFee = BigInt(aggregateTx.fee);
 
             const totalFee = createFee + supplyFee + votingFee + 1_000_000n;
 
             console.log("====== Fee Check ======");
             console.log("Create Fee :", createFee.toString());
             console.log("Supply Fee :", supplyFee.toString());
-            console.log("Voting Fee :", votingFee.toString());
             console.log("Total Fee  :", totalFee.toString());
             console.log("Balance    :", xymAmount.toString());
 
@@ -149,41 +124,17 @@ async function CreateTournament() {
                 );
                 console.log("[Create tournament] Supply Change TX Hash:", supplyResult.hash);
                 console.log("[Create tournament] Supply Change TX Announced Successfully!");
+
+                await DBPerf(
+                    "Update voteRight",
+                    "UPDATE Vote SET Vote = false, Give = false"
+                );
             } catch (txErr) {
                 console.log("[Create tournament] Supply Change TX Error", txErr);
                 return;
             }
 
-            // 投票権配布の署名とアナウンス
-            try {
-                console.log("[Create tournament] Announcing Send Voting Token Transaction...");
-
-                const sendResult = await SignAndAnnounce(
-                    aggregateTx,
-                    privateKey,
-                    'https://sym-test-01.opening-line.jp:3001',
-                    { waitForConfirmation: true }
-                );
-                console.log("[Create tournament] Send Voting Token TX Hash:", sendResult.hash);
-                console.log("[Create tournament] Send Voting Token TX Announced Successfully!");
-
-                //作成時刻と終了時刻
-                const now = new Date();
-                const expire = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7日後
-
-                // DB保存
-                await DBPerf(
-                    "Insert Into Mosaic",
-                    "INSERT INTO Mosaic (MosaicID, CreateTime, ExpireTime) VALUES (?, ?, ?)",
-                    [mosaicId, now, expire]
-                );
-                console.log(`[Create tournament] createTime:${now}`);
-                console.log(`[Create tournament] expireTime:${expire}`);
-
-            } catch (txErr) {
-                console.log("[Create tournament] Send Voting Token TX Error", txErr);
-                return;
-            }
+           
 
         } catch (txErr) {
             console.error("Error: Tournament-Announce", txErr);
