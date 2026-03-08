@@ -59,6 +59,7 @@ router.get('/PhotoList', async (req, res) => {
             []
         );
         if (!createResults || createResults.length === 0) {
+            console.log("[Tournament] No Mosaic Found. Create Tournament.");
             await CreateTournament();
         } else {
             const createTime = new Date(createResults[0].CreateTime);

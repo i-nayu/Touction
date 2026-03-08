@@ -30,8 +30,7 @@ async function CreateTournament() {
     // トーナメント作成処理
     // =====================================================================
     try {
-        const OriginalPrivateKey = new PrivateKey(process.env.TOURNAMENT_PRIVATE_KEY);
-        const privateKey = OriginalPrivateKey.toString();
+        const privateKey = new PrivateKey(process.env.TOURNAMENT_PRIVATE_KEY);
 
         // ===== Mosaic定義トランザクション作成 =====
         const { mosaicId, mosaicDefinitionTx, keyPair, createFacade } = CreateMosaicTx({
@@ -195,7 +194,7 @@ async function CreateTournament() {
 
 
     } catch (err) {
-        console.error("Error: Tournament-Cerate", err);
+        console.error("Error: Tournament-Create", err);
         return;
     }
 }

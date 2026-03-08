@@ -13,6 +13,7 @@ users: 送信対象のアドレスと送信したいモザイク量
 トランザクション作成のみ
 モザイク量は固定
 ========== Manual ==========*/
+import { PrivateKey } from 'symbol-sdk';
 
 async function SendTokens({
     facade,          // SymbolFacade
