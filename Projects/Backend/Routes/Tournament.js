@@ -4,11 +4,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';   // Cookie解析
 import multer from 'multer';
-import cron from 'node-cron';
-import fs from 'fs';
 
-// symbol-sdk v3
-import { PrivateKey } from 'symbol-sdk';
 
 //関数読み込み
 import DBPerf from '../Tools/DBPerf.js';
@@ -18,6 +14,7 @@ import SignAndAnnounce from '../Tools/SignAndAnnounce.js';
 import LeftToken from '../Tools/LeftToken.js';
 import GetCurrencyMosaicId from '../Tools/GetCurrencyMosaicId.js';
 import GetAddress from '../Tools/GetAddress.js';
+import CreateTournament from '../Tools/CreateTournament.js';
 
 // ==========================
 // 環境変数の読み込み
@@ -54,6 +51,17 @@ router.get('/PhotoList', async (req, res) => {
     console.log("Tournament-/List-API is running");
 
     try {
+        /*トーナメント作成*/
+        const now = new Date();
+        const createResults = await DBPerf(
+            "Get CreateTime, ExpireTime",
+            `SELECT CreateTime, ExpireTime FROM Mosaic`,
+            []
+        );
+        if(!createResults || createResults[0].CreateTime > now && createResults[0].ExpireTime < now){
+            await CreateTournament();
+        }
+
         // バックエンドで定義するテーマと終了日時
         const theme = "知床";
 

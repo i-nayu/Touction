@@ -1,5 +1,4 @@
 import express from 'express';
-import cron from 'node-cron';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -8,22 +7,21 @@ import { fileURLToPath } from 'url';
 import { PrivateKey } from 'symbol-sdk';
 
 //関数読み込み
-import DBPerf from '../Tools/DBPerf.js';
-import { CreateMosaicTx } from '../Tools/CreateMosaicTx.js';
-import SignAndAnnounce from '../Tools/SignAndAnnounce.js';
-import CreateSupplyTx from '../Tools/SupplyMosaic.js';
-import SendTokens from '../Tools/SendTokens.js'; //複数の相手にまとめて送信する関数
-import GetCurrencyMosaicId from '../Tools/GetCurrencyMosaicId.js';
-import GetAddress from '../Tools/GetAddress.js';
-import LeftToken from '../Tools/LeftToken.js';
+import DBPerf from './DBPerf.js';
+import { CreateMosaicTx } from './CreateMosaicTx.js';
+import SignAndAnnounce from './SignAndAnnounce.js';
+import CreateSupplyTx from './SupplyMosaic.js';
+import SendTokens from './SendTokens.js'; //複数の相手にまとめて送信する関数
+import GetCurrencyMosaicId from './GetCurrencyMosaicId.js';
+import GetAddress from './GetAddress.js';
+import LeftToken from './LeftToken.js';
 
-const router = express.Router();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-async function runCreateTournament(trigger = 'cron') {
+async function CreateTournament() {
     console.log(`[Create tournament] Job started by ${trigger}`);
 
 
@@ -192,28 +190,19 @@ async function runCreateTournament(trigger = 'cron') {
 
         } catch (txErr) {
             console.error("Error: Tournament-Announce", txErr);
+            return;
         }
 
 
     } catch (err) {
         console.error("Error: Tournament-Cerate", err);
+        return;
     }
 }
 
-// =====================================================================
-// トーナメント作成API（定期実行）
-// =====================================================================
-cron.schedule('0 0 */7 * *', async () => {
-    await runCreateTournament('cron');
-});
 
-// Docker起動直後にも1回実行（DB起動待ちのため少し遅延）
-setTimeout(() => {
-    runCreateTournament('startup').catch((err) => {
-        console.error('[Create tournament] Startup run failed', err);
-    });
-}, 10000);
+
 
 console.log('[Create tournament] Cron job registered');
 
-export default router;
+export default CreateTournament;
