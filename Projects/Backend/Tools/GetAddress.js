@@ -11,15 +11,16 @@ originalPrivateKey: 秘密鍵
 import { SymbolFacade } from 'symbol-sdk/symbol';
 import { PrivateKey } from 'symbol-sdk';
 
-function GetAddress(type, originalPrivateKey) {
-    const facade = new SymbolFacade(type);
+
+function GetAddress(type,originalPrivateKey) {
     const privateKey = new PrivateKey(originalPrivateKey);
+    const facade = new SymbolFacade(type);
 
     // 公開鍵を取得
-    const publicKey = facade.keyPairFromPrivateKey(privateKey).publicKey;
+    const account = facade.createAccount(privateKey);
 
     // アドレス生成
-    const address = facade.network.publicKeyToAddress(publicKey);
+    const address = account.address;
 
     console.log(address.toString());
 

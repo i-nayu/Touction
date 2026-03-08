@@ -14,35 +14,39 @@ users: 送信対象のアドレスと送信したいモザイク量
 モザイク量は固定
 ========== Manual ==========*/
 import { PrivateKey } from 'symbol-sdk';
+import { SymbolFacade } from 'symbol-sdk/symbol';
 
 async function SendTokens({
-    facade,          // SymbolFacade
-    signerPrivateKey,// 配布元の秘密鍵
+    privateKey,// 配布元の秘密鍵
     mosaicId,        // 配布するモザイクID
     users            // 配布対象ユーザー [{ address }, ...]
 }) {
+    // Facade 初期化
+    const facade = new SymbolFacade('testnet');
+
     // サイン用の KeyPairを作成
-    const signer = facade.createAccount(signerPrivateKey);
+    const signer = facade.createAccount(privateKey);
 
     // innerTx（送信トランザクション） を作る
-    const innerTxs = users.map(user => 
-        facade.transactionFactory.create({
+    const innerTxs = users.map(user =>
+        facade.transactionFactory.createEmbedded({
             type: 'transfer_transaction_v1',
             signerPublicKey: signer.publicKey,
             recipientAddress: user.address,
-            mosaics: [{ mosaicId: BigInt('0x' + mosaicId), amount: BigInt(user.amount) }],
-            deadline: facade.network.fromDatetime(new Date()).addHours(2).timestamp
+            mosaics: [{ mosaicId: BigInt('0x' + mosaicId), amount: BigInt(user.amount) }]
         })
     );
 
     // トランザクションをまとめる
-    const aggregateTx = facade.transactionFactory.aggregate({
+    const aggregateTx = facade.transactionFactory.create({
         type: 'aggregate_complete_transaction_v1',
         signerPublicKey: signer.publicKey,
-        innerTransactions: innerTxs,
-        fee: 1_000_000n,
+        transactions: innerTxs,
         deadline: facade.network.fromDatetime(new Date()).addHours(2).timestamp
     });
+
+    const multiplier = 100n;
+    aggregateTx.fee = BigInt(aggregateTx.size) * multiplier;
 
 
     return aggregateTx;

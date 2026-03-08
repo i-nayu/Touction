@@ -35,7 +35,7 @@ async function CreateTournament() {
         // ===== Mosaic定義トランザクション作成 =====
         const { mosaicId, mosaicDefinitionTx, keyPair, createFacade } = CreateMosaicTx({
             networkType: 'testnet',
-            senderPrivateKey: privateKey,
+            privateKey,
             transferable: true,
             deadlineHours: 24
         });
@@ -58,7 +58,7 @@ async function CreateTournament() {
         console.log("[Create tournament] Creating Supply Change Transaction...");
         const { supplyTx, keyPair: supplyKeyPair, supplyFacade } = CreateSupplyTx({
             networkType: 'testnet',
-            senderPrivateKey: privateKey,
+            privateKey,
             mosaicId: mosaicId,
             supply: BigInt(userCount),
             deadlineHours: 24
@@ -69,8 +69,7 @@ async function CreateTournament() {
         //投票権配布
         console.log("[Create tournament] Creating Send Voting Token Transaction...");
         const aggregateTx = await SendTokens({
-            facade: supplyFacade,
-            signerPrivateKey: privateKey,
+            privateKey,
             mosaicId: mosaicId,
             users: users
         });
@@ -86,9 +85,9 @@ async function CreateTournament() {
             const currencyMosaicId = await GetCurrencyMosaicId(nodeUrl);
             const xymAmount = BigInt(await LeftToken(serverAddress, currencyMosaicId, nodeUrl));
 
-            const createFee = BigInt(mosaicDefinitionTx.maxFee);
-            const supplyFee = BigInt(supplyTx.maxFee);
-            const votingFee = BigInt(aggregateTx.maxFee);
+            const createFee = BigInt(mosaicDefinitionTx.fee);
+            const supplyFee = BigInt(supplyTx.fee);
+            const votingFee = BigInt(aggregateTx.fee);
 
             const totalFee = createFee + supplyFee + votingFee + 1_000_000n;
 
@@ -116,7 +115,6 @@ async function CreateTournament() {
                 const definitionResult = await SignAndAnnounce(
                     mosaicDefinitionTx,
                     privateKey,
-                    createFacade,
                     'https://sym-test-01.opening-line.jp:3001',
                     {
                         waitForConfirmation: true,
@@ -140,7 +138,6 @@ async function CreateTournament() {
                 const supplyResult = await SignAndAnnounce(
                     supplyTx,
                     privateKey,
-                    supplyFacade,
                     'https://sym-test-01.opening-line.jp:3001',
                     {
                         waitForConfirmation: true,
@@ -162,7 +159,6 @@ async function CreateTournament() {
                 const sendResult = await SignAndAnnounce(
                     aggregateTx,
                     privateKey,
-                    supplyFacade,
                     'https://sym-test-01.opening-line.jp:3001',
                     { waitForConfirmation: true }
                 );
