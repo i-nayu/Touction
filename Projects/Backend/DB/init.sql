@@ -16,20 +16,20 @@ CREATE TABLE Photos (
     BidUserID VARCHAR(255),   -- 現在の最高入札者
     Amount INT,           -- 現在の最高額
     FOREIGN KEY (UserID) REFERENCES Identify(UserID),
-    FOREIGN KEY (MaxBidUserID) REFERENCES Identify(UserID)
+    FOREIGN KEY (BidUserID) REFERENCES Identify(UserID)
 
 );
 
 CREATE TABLE Vote (
     UserID VARCHAR(255) PRIMARY KEY,
-    FOREIGN KEY (UserID) REFERENCES Identify(UserID),
-    Vote BOOLEAN NOT NULL DEFAULT TRUE
+    Vote BOOLEAN NOT NULL DEFAULT TRUE,
+    FOREIGN KEY (UserID) REFERENCES Identify(UserID)
 );
 
-CEATE TABLE BOUGHT (
+CREATE TABLE BOUGHT (
     PhotoID INT AUTO_INCREMENT PRIMARY KEY,
     UserID VARCHAR(255), --購入者
     PhotoPath VARCHAR(500),
     Amount INT --購入額
-)
+);
 

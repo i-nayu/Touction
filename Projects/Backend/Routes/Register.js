@@ -11,7 +11,6 @@ import { PrivateKey } from 'symbol-sdk';
 
 //関数読み込み
 import DBPerf from '../Tools/DBPerf.js';
-import CreateCookie from '../Tools/CreateCookie.js'; // クッキー作成関数
 
 // ==========================
 // 環境変数の読み込み

@@ -5,10 +5,11 @@ import ConfirmButton from "../../Components/ConfirmButton/ConfirmButton";
 
 function Register() {
   const [userId, setUserId] = useState("");
+  const [registeredUserId, setRegisteredUserId] = useState("");
   const [, setError] = useState("");
   const [, setSuccess] = useState("");
   const [, setIsSubmitting] = useState(false);
-  const [qrCode, setQrCode] = useState("/qr.png");
+  const [qrCode, setQrCode] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -41,6 +42,7 @@ function Register() {
         setError("登録に失敗しました。もう一度お試しください。");
       } else {
         setQrCode(data.qrCode);
+        setRegisteredUserId(userId);
         setSuccess("アカウントを作成しました。ログインしてください。");
         setUserId("");
       }
@@ -74,11 +76,14 @@ return (
           </div>
         </div>
         {qrCode && (
-          <img src={qrCode} alt="login qr" />
+          <div className="qr-code-area">
+            <p>生成された秘密鍵QRコードを保存してください</p>
+            <img className="qr-code-image" src={qrCode} alt="秘密鍵QRコード" />
+            <a className="qr-download-link" href={qrCode} download={`${registeredUserId || "user"}-private-key-qr.png`}>
+              QRコードをダウンロード
+            </a>
+          </div>
         )}
-        <a href={qrCode} download="loginQR.png">
-          <button>QRコードをダウンロード</button>
-        </a>
         
       </div>
     </form>

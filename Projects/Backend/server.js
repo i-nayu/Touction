@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import './Routes/CreateTournament.js';
 const app = express();
 
 // ==========================

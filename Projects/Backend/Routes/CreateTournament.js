@@ -1,26 +1,39 @@
+import express from 'express';
 import cron from 'node-cron';
+import path from 'path';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
 
 // symbol-sdk v3
 import { PrivateKey } from 'symbol-sdk';
 
 //関数読み込み
-import DBPerf from '../../Tools/DBPerf.js';
-import { CreateMosaicTx } from '../../Tools/CreateMosaicTx.js';
-import SignAndAnnounce from '../../Tools/SignAndAnnounce.js';
-import CreateSupplyTx from '../../Tools/SupplyMosaic.js';
-import SendTokens from '../../Tools/SendTokens.js'; //複数の相手にまとめて送信する関数
-import GetCurrencyMosaicId from '../../Tools/GetCurrencyMosaicId.js';
-import GetAddress from '../../Tools/GetAddress.js';
-import LeftToken from '../../Tools/LeftToken.js';
+import DBPerf from '../Tools/DBPerf.js';
+import { CreateMosaicTx } from '../Tools/CreateMosaicTx.js';
+import SignAndAnnounce from '../Tools/SignAndAnnounce.js';
+import CreateSupplyTx from '../Tools/SupplyMosaic.js';
+import SendTokens from '../Tools/SendTokens.js'; //複数の相手にまとめて送信する関数
+import GetCurrencyMosaicId from '../Tools/GetCurrencyMosaicId.js';
+import GetAddress from '../Tools/GetAddress.js';
+import LeftToken from '../Tools/LeftToken.js';
+
+const router = express.Router();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
+async function runCreateTournament(trigger = 'cron') {
+    console.log(`[Create tournament] Job started by ${trigger}`);
 
 
 
-// =====================================================================
-// トーナメント作成API（7日ごと）
-// =====================================================================
-cron.schedule('0 0 */7 * *', async () => {
+    // =====================================================================
+    // トーナメント作成処理
+    // =====================================================================
     try {
-        const privateKey = new PrivateKey(process.env.TOURNAMENT_PRIVATE_KEY);
+        const OriginalPrivateKey = new PrivateKey(process.env.TOURNAMENT_PRIVATE_KEY);
+        const privateKey = OriginalPrivateKey.toString();
 
         // ===== Mosaic定義トランザクション作成 =====
         const { mosaicId, mosaicDefinitionTx, keyPair, createFacade } = CreateMosaicTx({
@@ -31,7 +44,7 @@ cron.schedule('0 0 */7 * *', async () => {
         });
 
         //DBからアドレスを取得
-        const usersResult = await DBPerf("Get Users", "SELECT Address FROM Users", []);
+        const usersResult = await DBPerf("Get Users", "SELECT Address FROM Identify", []);
         const users = usersResult.map(user => ({
             address: user.Address,
             amount: 1n
@@ -185,4 +198,22 @@ cron.schedule('0 0 */7 * *', async () => {
     } catch (err) {
         console.error("Error: Tournament-Cerate", err);
     }
+}
+
+// =====================================================================
+// トーナメント作成API（定期実行）
+// =====================================================================
+cron.schedule('0 0 */7 * *', async () => {
+    await runCreateTournament('cron');
 });
+
+// Docker起動直後にも1回実行（DB起動待ちのため少し遅延）
+setTimeout(() => {
+    runCreateTournament('startup').catch((err) => {
+        console.error('[Create tournament] Startup run failed', err);
+    });
+}, 10000);
+
+console.log('[Create tournament] Cron job registered');
+
+export default router;

@@ -9,29 +9,35 @@ type TournamentPhoto = {
   id: number;
   title: string;
   imageUrl: string;
+  comment: string;
+};
+
+type TournamentApiPhoto = {
+  PhotoID: number;
+  PhotoPath: string;
+  Comment: string;
+};
+
+type TournamentResponse = {
+  expireTime: string | null;
+  photos: TournamentApiPhoto[];
 };
 
 const INITIAL_VOTES_LEFT = 12;
-const tournamentPhotos: TournamentPhoto[] = [
-  { id: 1, title: "写真 1", imageUrl: "https://picsum.photos/id/1015/800/600" },
-  { id: 2, title: "写真 2", imageUrl: "https://picsum.photos/id/1025/800/600" },
-  { id: 3, title: "写真 3", imageUrl: "https://picsum.photos/id/1035/800/600" },
-  { id: 4, title: "写真 4", imageUrl: "https://picsum.photos/id/1045/800/600" },
-  { id: 5, title: "写真 5", imageUrl: "https://picsum.photos/id/1055/800/600" },
-  { id: 6, title: "写真 6", imageUrl: "https://picsum.photos/id/1065/800/600" },
-];
 
 function Tournament() {
   const navigate = useNavigate();
   const [deadlineTime, setDeadlineTime] = useState<string | number>("読み込み中...");
   const [votesLeft] = useState(INITIAL_VOTES_LEFT);
+  const [photos, setPhotos] = useState<TournamentPhoto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<TournamentPhoto | null>(null);
   const [selectedQrFile, setSelectedQrFile] = useState<File | null>(null);
   const [isUploadingQr, setIsUploadingQr] = useState(false);
 
     
-    async function fetchDeadlineTime(expireTime: Date) {
+    async function DeadlineTime(expireTime: Date) {
         const now = new Date();
         const LeftTime = expireTime.getTime() - now.getTime();
         if(LeftTime <= 0){
@@ -43,7 +49,7 @@ function Tournament() {
   useEffect(()=> {
         async function fetchTournamentData() {
             try{
-                const res = await fetch('/PhotoList', {
+                const res = await fetch('/Tournament/PhotoList', {
                     method: 'GET',
                     credentials: 'include',
                 });
@@ -51,11 +57,25 @@ function Tournament() {
                     toast.error("トーナメントデータの取得に失敗しました");
                     return;
                 }
-                const data= await res.json();
-                const deadlineTime = await fetchDeadlineTime(new Date(data.expireTime));
-                setDeadlineTime(deadlineTime);
+                const data: TournamentResponse = await res.json();
+                if (data.expireTime) {
+                  const deadlineTime = await DeadlineTime(new Date(data.expireTime));
+                  setDeadlineTime(deadlineTime);
+                } else {
+                  setDeadlineTime("-");
+                }
+
+                const mappedPhotos: TournamentPhoto[] = (data.photos ?? []).map((photo: TournamentApiPhoto) => ({
+                  id: photo.PhotoID,
+                  title: photo.Comment?.trim() || `写真 ${photo.PhotoID}`,
+                  imageUrl: photo.PhotoPath,
+                  comment: photo.Comment ?? "",
+                }));
+                setPhotos(mappedPhotos);
             }catch(error){
                 toast.error("通信エラー");
+              } finally {
+                setIsLoading(false);
             }
         }
         fetchTournamentData();
@@ -121,7 +141,7 @@ function Tournament() {
     try {
       const qrText = await extractQrTextFromFile(selectedQrFile);
 
-      const res = await fetch("/Vote", {
+      const res = await fetch("/Tournament/Vote", {
         method: "POST",
         credentials: "include",
         headers: {
@@ -129,7 +149,7 @@ function Tournament() {
         },
         body: JSON.stringify({
           photoId: selectedPhoto?.id ?? null,
-          qrCodeText: qrText,
+          privateKey: qrText,
         }),
       });
 
@@ -173,7 +193,9 @@ function Tournament() {
             <h2 className="photo-section-title">投票する写真を選んでください</h2>
         </div>
         <div className="photo-grid">
-          {tournamentPhotos.map((photo) => (
+          {isLoading && <p className="tournament-message">読み込み中...</p>}
+          {!isLoading && photos.length === 0 && <p className="tournament-message">表示できる写真がありません</p>}
+          {!isLoading && photos.map((photo) => (
             <article className="photo-card" key={photo.id}>
             <PhotoButton 
                 icon={photo.imageUrl} 

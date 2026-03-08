@@ -29,7 +29,7 @@ deadlineHours: 有効期限
 import { PrivateKey } from 'symbol-sdk';
 import { SymbolFacade } from 'symbol-sdk/symbol';
 
-export default function CreateTransferTx({
+function CreateTransferTx({
     networkType = 'testnet',
     senderPrivateKey,
     recipientRawAddress,
@@ -94,3 +94,5 @@ export default function CreateTransferTx({
         facade
     };
 }
+
+export default CreateTransferTx;

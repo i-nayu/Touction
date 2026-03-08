@@ -11,14 +11,13 @@ import fs from 'fs';
 import { PrivateKey } from 'symbol-sdk';
 
 //関数読み込み
-import DBPerf from '../../Tools/DBPerf.js';
-import VCM from '../../Tools/VCM.js';
-import SaveIcon from '../../Tools/SaveIcon.js';
-import { CreateTransferTx } from '../../Tools/CreateTransferTX.js';
-import SignAndAnnounce from '../../Tools/SignAndAnnounce.js';
-import LeftToken from '../../Tools/LeftToken.js';
-import GetCurrencyMosaicId from '../../Tools/GetCurrencyMosaicId.js';
-import GetAddress from '../../Tools/GetAddress.js';
+import DBPerf from '../Tools/DBPerf.js';
+import SaveIcon from '../Tools/SaveIcon.js';
+import CreateTransferTx from '../Tools/CreateTransferTx.js';
+import SignAndAnnounce from '../Tools/SignAndAnnounce.js';
+import LeftToken from '../Tools/LeftToken.js';
+import GetCurrencyMosaicId from '../Tools/GetCurrencyMosaicId.js';
+import GetAddress from '../Tools/GetAddress.js';
 
 // ==========================
 // 環境変数の読み込み
@@ -43,7 +42,7 @@ router.get('/', (req, res) => {
 
     // フロントエンドのビルド済みHTMLを返す
     res.sendFile(
-        path.join(__dirname, "..", "..", "..", "..", "Frontend", "dist", "index.html")
+        path.join(__dirname, "..", "..", "Frontend", "dist", "index.html")
     );
 }
 );
