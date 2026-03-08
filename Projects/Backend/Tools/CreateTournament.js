@@ -46,6 +46,7 @@ async function CreateTournament() {
             address: user.Address,
             amount: 1n
         }));
+        console.log("users:", users);
 
         const userCount = users.length;
         if (userCount === 0) {
@@ -73,6 +74,7 @@ async function CreateTournament() {
             mosaicId: mosaicId,
             users: users
         });
+        console.log("AggregateTx:",aggregateTx.type.value);
 
 
 

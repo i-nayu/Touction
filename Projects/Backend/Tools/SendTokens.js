@@ -27,26 +27,49 @@ async function SendTokens({
     // サイン用の KeyPairを作成
     const signer = facade.createAccount(privateKey);
 
+    console.log("mosaicId:", mosaicId);
+    console.log("type:", typeof mosaicId);
+
     // innerTx（送信トランザクション） を作る
-    const innerTxs = users.map(user =>
-        facade.transactionFactory.createEmbedded({
+    const innerTxs = users.map(user => {
+        if (!user.address) throw new Error('address missing');
+        if (user.amount === undefined) throw new Error('amount missing');
+
+        const mosaicIdBigInt = BigInt(
+            mosaicId.startsWith('0x')
+                ? mosaicId
+                : '0x' + mosaicId
+        );
+        console.log("mosaicIdBigInt:", mosaicIdBigInt);
+
+        return facade.transactionFactory.createEmbedded({
             type: 'transfer_transaction_v1',
             signerPublicKey: signer.publicKey,
             recipientAddress: user.address,
-            mosaics: [{ mosaicId: BigInt('0x' + mosaicId), amount: BigInt(user.amount) }]
-        })
-    );
+            mosaics: [{
+                mosaicId: mosaicIdBigInt,
+                amount: BigInt(user.amount)
+            }]
+        });
+    });
+    console.log(innerTxs.length)
 
     // トランザクションをまとめる
+    if (innerTxs.length === 0) throw new Error('No transactions to aggregate');
+    const networkTimestamp = facade.network.fromDatetime(
+        new Date(Date.now() + 2 * 60 * 60 * 1000)
+    );
+
+    const deadline = BigInt(networkTimestamp.timestamp);
+
     const aggregateTx = facade.transactionFactory.create({
         type: 'aggregate_complete_transaction_v1',
         signerPublicKey: signer.publicKey,
         transactions: innerTxs,
-        deadline: facade.network.fromDatetime(new Date()).addHours(2).timestamp
+        deadline
     });
 
-    const multiplier = 100n;
-    aggregateTx.fee = BigInt(aggregateTx.size) * multiplier;
+    aggregateTx.fee = BigInt(aggregateTx.size) * 100n;
 
 
     return aggregateTx;
