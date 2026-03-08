@@ -58,8 +58,17 @@ router.get('/PhotoList', async (req, res) => {
             `SELECT CreateTime, ExpireTime FROM Mosaic`,
             []
         );
-        if(!createResults || createResults[0].CreateTime > now && createResults[0].ExpireTime < now){
+        if (!createResults || createResults.length === 0) {
             await CreateTournament();
+        } else {
+            const createTime = new Date(createResults[0].CreateTime);
+            const expireTime = new Date(createResults[0].ExpireTime);
+
+            // 今が範囲外なら作成
+            if (now < createTime || now > expireTime) {
+                console.log("[Tournament] Create Tournament");
+                await CreateTournament();
+            }
         }
 
         // バックエンドで定義するテーマと終了日時

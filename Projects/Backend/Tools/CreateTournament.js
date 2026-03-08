@@ -22,7 +22,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 async function CreateTournament() {
-    console.log(`[Create tournament] Job started by ${trigger}`);
+    console.log(`[Create tournament] Job started `);
 
 
 
