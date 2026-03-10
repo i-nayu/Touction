@@ -87,6 +87,12 @@ router.post('/Submit', async (req, res) => {
             [userId, address]
         );
 
+        await DBPerf(
+            "Insert Into Vote",
+            "INSERT INTO Vote (UserID) VALUES (?)",
+            [userId]
+        );
+
         // 秘密鍵をQRコード化
         let qr;
 

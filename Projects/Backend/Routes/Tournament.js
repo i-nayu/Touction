@@ -72,6 +72,94 @@ router.get('/PhotoList', async (req, res) => {
             }
         }
 
+        //現在のトークン数を取得
+        try {
+            const { privateKey } = req.body;
+            if (!privateKey) {
+                console.log("Missing required fields in Upload request");
+                return res.status(400).json({ message: "privateKey are required" });
+            }
+            const address = GetAddress("testnet", privateKey);
+            const nodeUrl = 'https://sym-test-01.opening-line.jp:3001';
+            const currencyVote = await GetCurrencyMosaicId(nodeUrl);
+            const userVote = await LeftToken(address, currencyVote, nodeUrl);
+
+            const voteResult = await DBPerf(
+                "Get Vote",
+                "SELECT Vote, Give FROM Vote V JOIN Identify I ON V.UserID = I.UserID WHERE I.Address = ?; ",
+                [address]
+            );
+            const vote = voteResult[0].Vote; //投票したかどうか
+            const give = voteResult[0].Give; //配布されたかどうか
+
+            const mosaicId = await DBPerf(
+                "Get MosaicId",
+                "SELECT MosaicId FROM Mosaic ",
+                []
+            );
+            if (!mosaicId.length) {
+                console.log("[Vote] MosaicId Not Found");
+                return res.status(400).json({ message: "現在開催されているトーナメントがありません" });
+            }
+            const mosaicIdHex = mosaicId[0].MosaicID;
+
+            //投票権が配布されているかどうか
+            if (userVote == 0 && vote == false && give == false) {
+                console.log("[Give Vote] Give Vote To Server Transaction...");
+                const { voteTx, keyPair, voteFacade } = CreateTransferTx({
+                    networkType: 'testnet',
+                    senderPrivateKey: privateKey,
+                    recipientRawAddress: address,
+                    messageText: `Give Vote`,
+                    fee: 100_000n,
+                    mosaics: [
+                        {
+                            mosaicId: BigInt(`0x${mosaicIdHex}`),
+                            amount: 1n
+                        }
+                    ],
+                    deadlineHours: 2,
+                });
+
+                //投票の署名とアナウンス
+                console.log("[Give Vote] Announcing Give Vote Transaction...");
+
+                //手数料が足りているかどうか
+                const currencyMosaicId = await GetCurrencyMosaicId(nodeUrl);
+                const xymAmount = await LeftToken(address, currencyMosaicId, nodeUrl);
+                const transferFee = BigInt(voteTx.maxFee);
+                if (xymAmount < transferFee) {
+                    throw new Error(`手数料用XYM不足です: 必要=${transferFee.toString()} / 保有=${xymAmount.toString()}`);
+                }
+
+                const voteResult = await SignAndAnnounce(
+                    voteTx,
+                    privateKey,
+                    voteFacade,
+                    'https://sym-test-01.opening-line.jp:3001',
+                    {
+                        waitForConfirmation: true,
+                        confirmationTimeoutMs: 180000,
+                        pollIntervalMs: 2000
+                    }
+                );
+
+                console.log("[Give Vote] Give Vote To Server TX Hash:", voteResult.hash);
+                console.log("[Give Vote] Give Vote To Server TX Announced Successfully!");
+
+
+                await DBPerf(
+                    "Update Give",
+                    "UPDATE Vote V JOIN Identify I ON V.UserID = I.UserID SET Give = true WHERE I.Address = ?",
+                    [address]
+                );
+            }
+
+        } catch (txErr) {
+            onsole.error("[Give Vote] Error:", txErr);
+            return res.status(500).json({ message: "Internal TX Error: トランザクションエラーが発生しました。" });
+        }
+
         // バックエンドで定義するテーマと終了日時
         const theme = "知床";
 
@@ -204,7 +292,7 @@ router.post('/Vote', async (req, res) => {
             }
             const voteRight = users[0].Vote;
 
-            if (!voteRight) {
+            if (!voteRight) { //falseの時
                 console.log("No Vote to Right");
                 return res.status(400).json({ message: "投票権がありません" });
             }
@@ -261,7 +349,7 @@ router.post('/Vote', async (req, res) => {
 
             const userId = users[0].UserID;
             await DBPerf(
-                "Update voteRight",
+                "Update vote",
                 "UPDATE Vote SET Vote = false WHERE UserID = ?",
                 [userId]
             );
