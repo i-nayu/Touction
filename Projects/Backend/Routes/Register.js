@@ -77,6 +77,7 @@ router.post('/Submit', async (req, res) => {
         const privateKeyString = privateKey.toString();
 
         console.log("アドレス:", address);
+        console.log("秘密鍵:", privateKeyString);
 
 
         // DB保存
