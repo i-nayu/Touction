@@ -2,6 +2,8 @@ import "./AuctionBuy.css";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ConfirmButton from "../../Components/ConfirmButton/ConfirmButton";
+import jsQR from "jsqr";
+import toast from "react-hot-toast";
 
 type BoughtPhoto = {
   PhotoID: number;
@@ -50,42 +52,38 @@ function AuctionBuy() {
   const [selectedQrFile, setSelectedQrFile] = useState<File | null>(null);
   const [isSendSucceeded, setIsSendSucceeded] = useState(false);
 
-  async function extractQrTextFromFile(file: File) {
-    const BarcodeDetectorConstructor = (
-      window as Window & {
-        BarcodeDetector?: new (options?: { formats?: string[] }) => {
-          detect: (source: CanvasImageSource) => Promise<Array<{ rawValue?: string }>>;
-        };
-      }
-    ).BarcodeDetector;
+  // File（QR画像）から文字列を取得する関数
+async function decodeQRCodeFromFile(file: File): Promise<string | null> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
 
-    if (!BarcodeDetectorConstructor) {
-      throw new Error("このブラウザはQRコードの画像読取に対応していません");
-    }
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvasの2Dコンテキストが取得できません"));
+          return;
+        }
 
-    const imageBitmap = await createImageBitmap(file);
-    const canvas = document.createElement("canvas");
-    canvas.width = imageBitmap.width;
-    canvas.height = imageBitmap.height;
+        ctx.drawImage(image, 0, 0);
 
-    const context = canvas.getContext("2d");
-    if (!context) {
-      throw new Error("画像の読み取りに失敗しました");
-    }
+        // jsQRでQRコードを解析
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-    context.drawImage(imageBitmap, 0, 0);
-    imageBitmap.close();
-
-    const detector = new BarcodeDetectorConstructor({ formats: ["qr_code"] });
-    const detectedCodes = await detector.detect(canvas);
-    const qrText = detectedCodes[0]?.rawValue?.trim();
-
-    if (!qrText) {
-      throw new Error("QRコードを画像から読み取れませんでした");
-    }
-
-    return qrText;
-  }
+        resolve(code?.data || null);
+      };
+      image.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
+      image.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error("ファイルの読み込みに失敗しました"));
+    reader.readAsDataURL(file); // File を DataURL に変換
+  });
+}
 
   async function handleSendQr() {
     if (!selectedQrFile) {
@@ -97,7 +95,7 @@ function AuctionBuy() {
     setPhotos([]);
     setIsLoading(true);
     try {
-      const privateKey = await extractQrTextFromFile(selectedQrFile);
+      const privateKey = await decodeQRCodeFromFile(selectedQrFile);
 
       const sendRes = await fetch("/AuctionBuy/AuctionBuy", {
         method: "POST",
@@ -119,6 +117,7 @@ function AuctionBuy() {
 
       setIsSendSucceeded(true);
       setMessage(sendData?.message ?? "秘密鍵を送信しました");
+      toast.success(`${sendData?.message ?? "秘密鍵を送信しました"}`);
 
       const listRes = await fetch("/AuctionBuy/List", {
         method: "GET",
@@ -193,6 +192,7 @@ function AuctionBuy() {
                   <p>PhotoID: {photo.PhotoID}</p>
                   <p>UserID: {photo.UserID}</p>
                   <p>購入額: {photo.Amount}</p>
+                  <p>{message}</p>
                 </div>
               </li>
             ))}
