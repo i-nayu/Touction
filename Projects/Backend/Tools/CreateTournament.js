@@ -40,6 +40,12 @@ async function CreateTournament() {
             deadlineHours: 24
         });
 
+        // ユーザー数取得
+        const result = await DBPerf(
+            "Count Users",
+            "SELECT COUNT(*) as count FROM Identify"
+        );
+
 
         //供給変更トランザクションを作成
         console.log("[Create tournament] Creating Supply Change Transaction...");
@@ -47,7 +53,7 @@ async function CreateTournament() {
             networkType: 'testnet',
             privateKey,
             mosaicId: mosaicId,
-            supply: BigInt(userCount),
+            supply: 1000000n, // 100万枚供給
             deadlineHours: 24
         });
 
@@ -67,7 +73,7 @@ async function CreateTournament() {
             const createFee = BigInt(mosaicDefinitionTx.fee);
             const supplyFee = BigInt(supplyTx.fee);
 
-            const totalFee = createFee + supplyFee + votingFee + 1_000_000n;
+            const totalFee = createFee + supplyFee + 1_000_000n;
 
             console.log("====== Fee Check ======");
             console.log("Create Fee :", createFee.toString());
@@ -124,6 +130,7 @@ async function CreateTournament() {
                 );
                 console.log("[Create tournament] Supply Change TX Hash:", supplyResult.hash);
                 console.log("[Create tournament] Supply Change TX Announced Successfully!");
+                
 
                 await DBPerf(
                     "Update voteRight",
@@ -134,7 +141,23 @@ async function CreateTournament() {
                 return;
             }
 
-           
+            // Mosaicテーブルに新規トーナメント情報を追加
+            try {
+                const now = new Date();
+                const createTime = now.toISOString().slice(0, 19).replace('T', ' ');
+                // 例: 24時間後をExpireTimeとする
+                const expireTime = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+                await DBPerf(
+                    "Insert Tournament Mosaic",
+                    "INSERT INTO Mosaic (MosaicId, CreateTime, ExpireTime) VALUES (?, ?, ?)",
+                    [mosaicId, createTime, expireTime]
+                );
+                console.log(`[Create tournament] Mosaic info inserted to DB: ${mosaicId}`);
+            } catch (dbErr) {
+                console.error("[Create tournament] Failed to insert Mosaic info to DB", dbErr);
+            }
+
+
 
         } catch (txErr) {
             console.error("Error: Tournament-Announce", txErr);

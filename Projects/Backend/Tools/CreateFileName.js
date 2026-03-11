@@ -7,7 +7,10 @@ originalName: アップロードされたファイル名
 ========== Manual ==========*/
 
 
-// ===被らないファイル名を作成===
+// ===被らないファイル名を作成=== //
+import path from "path";
+import { randomUUID } from "crypto";
+
 function CreateFileName(originalName) {
   //拡張子取り出し(extname: .pngなど)
   const ext = path.extname(originalName);

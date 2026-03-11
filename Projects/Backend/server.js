@@ -27,6 +27,22 @@ dotenv.config({
 //ポート設定
 const PORT = process.env.PORT || 5001;
 
+// ==========================
+// ミドルウェア設定
+// ==========================
+
+// JSONボディを扱えるようにする
+app.use(express.json());
+
+// URLエンコード形式のフォーム対応
+app.use(express.urlencoded({ extended: true }));
+
+// publicフォルダを静的公開
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 保存されたアイコンフォルダを静的配信
+app.use('/icons', express.static(path.join(__dirname, 'icons')));
+
 
 // ==========================
 // Routes自動マウント処理

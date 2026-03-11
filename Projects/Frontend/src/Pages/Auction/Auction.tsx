@@ -66,6 +66,12 @@ function Auction() {
 
 		setIsSubmittingPhotoId(photo.PhotoID);
 		try {
+			const privateKey = sessionStorage.getItem("qrCodeData");
+			if (!privateKey) {
+				toast.error("秘密鍵が見つかりません。先にトーナメント画面でQRを読み込んでください");
+				return;
+			}
+
 			const res = await fetch("/Auction/Bid", {
 				method: "POST",
 				credentials: "include",
@@ -73,6 +79,7 @@ function Auction() {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
+					privateKey,
 					photoId: photo.PhotoID,
 					amount: bidAmount,
 				}),
@@ -128,6 +135,7 @@ function Auction() {
 								<div className="auction-meta">
 									<p>ユーザー名: {photo.UserID}</p>
 									<p>現在額: {photo.Amount}</p>
+									<p>投票数: {photo.voteCount}</p>
 									{isSubmittingPhotoId === photo.PhotoID && <p>送信中...</p>}
 								</div>
 							</li>

@@ -6,11 +6,10 @@ import PhotoButton from "../../Components/PhotoButton/PhotoButton";
 import ConfirmButton from "../../Components/ConfirmButton/ConfirmButton";
 import jsQR from "jsqr";
 
-const INITIAL_VOTES_LEFT = 12;
 
 function Tournament() {
   const navigate = useNavigate();
-  const [votesLeft] = useState(INITIAL_VOTES_LEFT);
+  const [votesLeft, setVotesLeft] = useState<number | null>(null);
   const [photos, setPhotos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -32,15 +31,24 @@ function Tournament() {
     const now = new Date();
     const LeftTime = expireTime.getTime() - now.getTime();
     if (LeftTime <= 0) return "投票終了";
-    return LeftTime;
+    const totalSeconds = Math.floor(LeftTime / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours}時間${minutes}分${seconds}秒`;
   }
 
   useEffect(() => {
     async function fetchTournamentData() {
       try {
+        const qrFromSession = sessionStorage.getItem("qrCodeData");
         const res = await fetch("/Tournament/PhotoList", {
-          method: "GET",
+          method: "POST",
           credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            qrFromSession: qrFromSession ?? null,
+          }),
         });
         if (!res.ok) {
           toast.error("トーナメントデータの取得に失敗しました");
@@ -53,7 +61,14 @@ function Tournament() {
         } else {
           setExpireTime("-");
         }
-        setPhotos(data.photos);
+        // データの正規化
+        const normalizedPhotos = data.photos.map((photo: any) => ({
+          id: photo.PhotoID,
+          imageUrl: photo.PhotoPath,
+          title: photo.Comment,
+        }));
+        setPhotos(normalizedPhotos);
+        setVotesLeft(Number(data.votesLeft));
       } catch (error) {
         toast.error("通信エラー");
       } finally {
@@ -108,15 +123,18 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
   });
 }
 
-  async function handleQrUpload() {
-    if (!selectedPhoto) {
+  async function handleQrUpload(photo?: any) {
+    const targetPhoto = photo ?? selectedPhoto;
+
+    if (!targetPhoto) {
       toast.error("写真を選択してください");
       return;
     }
 
     // sessionStorageの秘密鍵がある場合はそれを使う
-    const qrTextToSend =
-      selectedQrText ?? (selectedQrFile ? await decodeQRCodeFromFile(selectedQrFile) : null);
+
+    const qrTextToSend = selectedQrText ?? (selectedQrFile ? await decodeQRCodeFromFile(selectedQrFile) : null);
+    const qrFromSession = sessionStorage.getItem("qrCodeData");
 
     if (!qrTextToSend) {
       toast.error("QRコードまたは秘密鍵がありません");
@@ -130,8 +148,9 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          photoId: selectedPhoto.id,
-          privateKey: qrTextToSend,
+          photoId: targetPhoto.id,
+          textPrivateKey: qrTextToSend,
+          qrFromSession: qrFromSession ?? null,
         }),
       });
 
@@ -161,6 +180,7 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
     <main className="tournament-page">
       <header className="tournament-tab">
         <h1 className="tournament-title">トーナメント投票</h1>
+        <h1 className="tournament-title">テーマ：知床</h1>
         <ConfirmButton label="オークション" type="button" onClick={() => navigate("/auction")} />
         <ConfirmButton label="購入一覧" type="button" onClick={() => navigate("/auction-buy")} />
         <ConfirmButton label="アップロード" type="button" onClick={() => navigate("/upload-photo")} />
@@ -189,7 +209,7 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
             photos.map((photo) => (
               <article className="photo-card" key={photo.id}>
                 <PhotoButton
-                  icon={photo.imageUrl}
+                  icon={`http://localhost:5001${photo.imageUrl}`}
                   label={photo.title}
                   onClick={() => {
                     setSelectedPhoto(photo);

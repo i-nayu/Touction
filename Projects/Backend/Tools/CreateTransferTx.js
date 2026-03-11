@@ -81,7 +81,8 @@ function CreateTransferTx({
         type: createTransferTx.type,
         recipientAddress: createTransferTx.recipientAddress.toString(),
         mosaicsCount: createTransferTx.mosaics.length,
-        deadline: createTransferTx.deadline.toString()
+        deadline: createTransferTx.deadline.toString(),
+        MaxFee: createTransferTx.fee.toString()
     });
     
     // Shutdown Log

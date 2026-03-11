@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';   // Cookie解析
 import multer from 'multer';
+import { PrivateKey } from 'symbol-sdk';
 
 
 //関数読み込み
@@ -11,6 +12,7 @@ import DBPerf from '../Tools/DBPerf.js';
 import SaveIcon from '../Tools/SaveIcon.js';
 import CreateTransferTx from '../Tools/CreateTransferTx.js';
 import SignAndAnnounce from '../Tools/SignAndAnnounce.js';
+import CreateSupplyTx from '../Tools/SupplyMosaic.js';
 import LeftToken from '../Tools/LeftToken.js';
 import GetCurrencyMosaicId from '../Tools/GetCurrencyMosaicId.js';
 import GetAddress from '../Tools/GetAddress.js';
@@ -30,6 +32,7 @@ router.use(express.json());
 router.use(cookieParser());
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 const upload = multer({ storage: multer.memoryStorage() });
+let isGiveVoteProcessing = false;
 
 // =====================================================================
 // HTML送信API
@@ -47,42 +50,38 @@ router.get('/', (req, res) => {
 // =====================================================================
 // 画面表示API
 // =====================================================================
-router.get('/PhotoList', async (req, res) => {
+router.post('/PhotoList', async (req, res) => {
     console.log("Tournament-/List-API is running");
+    const nodeUrl = 'https://sym-test-01.opening-line.jp:3001';
+    const currencyVote = await GetCurrencyMosaicId(nodeUrl);
+    const tournamentPrivateKeyText = process.env.TOURNAMENT_PRIVATE_KEY?.trim();
+    if (!tournamentPrivateKeyText) {
+        return res.status(500).json({ message: "TOURNAMENT_PRIVATE_KEY が未設定です" });
+    }
+    const tournamentPrivateKey = new PrivateKey(tournamentPrivateKeyText);
+    const serverAddress = GetAddress("testnet", tournamentPrivateKeyText);
 
     try {
         /*トーナメント作成*/
-        const now = new Date();
         const createResults = await DBPerf(
-            "Get CreateTime, ExpireTime",
-            `SELECT CreateTime, ExpireTime FROM Mosaic`,
+            "Get Active Tournament",
+            `SELECT MosaicID, CreateTime, ExpireTime FROM Mosaic WHERE CreateTime <= NOW() AND ExpireTime >= NOW() ORDER BY CreateTime DESC LIMIT 1`,
             []
         );
         if (!createResults || createResults.length === 0) {
             console.log("[Tournament] No Mosaic Found. Create Tournament.");
             await CreateTournament();
-        } else {
-            const createTime = new Date(createResults[0].CreateTime);
-            const expireTime = new Date(createResults[0].ExpireTime);
-
-            // 今が範囲外なら作成
-            if (now < createTime || now > expireTime) {
-                console.log("[Tournament] Create Tournament");
-                await CreateTournament();
-            }
         }
 
         //現在のトークン数を取得
+        let address;
         try {
-            const { privateKey } = req.body;
-            if (!privateKey) {
+            const textPrivateKey = req.body.qrFromSession;
+            if (!textPrivateKey) {
                 console.log("Missing required fields in Upload request");
                 return res.status(400).json({ message: "privateKey are required" });
             }
-            const address = GetAddress("testnet", privateKey);
-            const nodeUrl = 'https://sym-test-01.opening-line.jp:3001';
-            const currencyVote = await GetCurrencyMosaicId(nodeUrl);
-            const userVote = await LeftToken(address, currencyVote, nodeUrl);
+            address = GetAddress("testnet", textPrivateKey);
 
             const voteResult = await DBPerf(
                 "Get Vote",
@@ -93,80 +92,142 @@ router.get('/PhotoList', async (req, res) => {
             const give = voteResult[0].Give; //配布されたかどうか
 
             const mosaicId = await DBPerf(
-                "Get MosaicId",
-                "SELECT MosaicId FROM Mosaic ",
+                "Get Active MosaicId",
+                "SELECT MosaicID FROM Mosaic WHERE CreateTime <= NOW() AND ExpireTime >= NOW() ORDER BY CreateTime DESC LIMIT 1",
                 []
             );
             if (!mosaicId.length) {
-                console.log("[Vote] MosaicId Not Found");
-                return res.status(400).json({ message: "現在開催されているトーナメントがありません" });
+                return res.status(400).json({ message: "現在開催中のトーナメントがありません" });
             }
             const mosaicIdHex = mosaicId[0].MosaicID;
+            const userVote = await LeftToken(address, mosaicIdHex, nodeUrl);
+            console.log(`User ${address} has ${userVote} vote tokens left.`);
 
             //投票権が配布されているかどうか
             if (userVote == 0 && vote == false && give == false) {
-                console.log("[Give Vote] Give Vote To Server Transaction...");
-                const { voteTx, keyPair, voteFacade } = CreateTransferTx({
-                    networkType: 'testnet',
-                    senderPrivateKey: privateKey,
-                    recipientRawAddress: address,
-                    messageText: `Give Vote`,
-                    fee: 100_000n,
-                    mosaics: [
-                        {
-                            mosaicId: BigInt(`0x${mosaicIdHex}`),
-                            amount: 1n
+                if (isGiveVoteProcessing) {
+                    return res.status(429).json({ message: "投票権配布処理中です。少し待って再試行してください。" });
+                }
+                isGiveVoteProcessing = true;
+                try {
+                    console.log("[Give Vote] Give Vote To Server Transaction...");
+                    const { tx, keyPair, voteFacade } = CreateTransferTx({
+                        networkType: 'testnet',
+                        senderPrivateKey: tournamentPrivateKeyText,
+                        recipientRawAddress: address,
+                        messageText: `Give Vote`,
+                        fee: 100_000n,
+                        mosaics: [
+                            {
+                                mosaicId: BigInt(`0x${mosaicIdHex}`),
+                                amount: 1n
+                            }
+                        ],
+                        deadlineHours: 2,
+                    });
+
+                    //投票の署名とアナウンス
+                    console.log("[Give Vote] Announcing Give Vote Transaction...");
+                    let serverVoteBalance = await LeftToken(serverAddress, mosaicIdHex, nodeUrl);
+                    console.log("ServerVoteBalance:", serverVoteBalance.toString());
+
+                    //手数料が足りているかどうか
+                    const currencyMosaicId = await GetCurrencyMosaicId(nodeUrl);
+                    const xymAmount = await LeftToken(serverAddress, currencyMosaicId, nodeUrl);
+                    const transferFee = BigInt(tx.fee);
+                    console.log(`[Give Vote] Fee Check: Server=${serverAddress}, XYM Balance=${xymAmount.toString()}, Fee=${transferFee.toString()}`);
+                    if (xymAmount < transferFee) {
+                        throw new Error(`手数料用XYM不足です: 必要=${transferFee.toString()} / 保有=${xymAmount.toString()}`);
+                    }
+                    if (serverVoteBalance < 1n) {
+                        console.log("[Give Vote] Server vote mosaic is empty. Supply top-up starts...");
+                        const { supplyTx } = CreateSupplyTx({
+                            networkType: 'testnet',
+                            privateKey: tournamentPrivateKey,
+                            mosaicId: mosaicIdHex,
+                            supply: 10000n,
+                            deadlineHours: 2,
+                        });
+
+                        const totalRequiredFee = transferFee + BigInt(supplyTx.fee);
+                        if (xymAmount < totalRequiredFee) {
+                            throw new Error(`手数料用XYM不足です(供給追加込み): 必要=${totalRequiredFee.toString()} / 保有=${xymAmount.toString()}`);
                         }
-                    ],
-                    deadlineHours: 2,
-                });
 
-                //投票の署名とアナウンス
-                console.log("[Give Vote] Announcing Give Vote Transaction...");
+                        const supplyResult = await SignAndAnnounce(
+                            supplyTx,
+                            tournamentPrivateKey,
+                            'https://sym-test-01.opening-line.jp:3001',
+                            {
+                                waitForConfirmation: true,
+                                confirmationTimeoutMs: 180000,
+                                pollIntervalMs: 2000
+                            }
+                        );
+                        console.log("[Give Vote] Supply top-up TX Hash:", supplyResult.hash);
 
-                //手数料が足りているかどうか
-                const currencyMosaicId = await GetCurrencyMosaicId(nodeUrl);
-                const xymAmount = await LeftToken(address, currencyMosaicId, nodeUrl);
-                const transferFee = BigInt(voteTx.maxFee);
-                if (xymAmount < transferFee) {
-                    throw new Error(`手数料用XYM不足です: 必要=${transferFee.toString()} / 保有=${xymAmount.toString()}`);
+                        serverVoteBalance = await LeftToken(serverAddress, mosaicIdHex, nodeUrl);
+                        console.log("[Give Vote] ServerVoteBalance(after top-up):", serverVoteBalance.toString());
+                        if (serverVoteBalance < 1n) {
+                            throw new Error(`投票モザイク不足です: 必要=1 / 保有=${serverVoteBalance.toString()}`);
+                        }
+                    }
+
+                    const voteResult = await SignAndAnnounce(
+                        tx,
+                        tournamentPrivateKey,
+                        'https://sym-test-01.opening-line.jp:3001',
+                        {
+                            waitForConfirmation: true,
+                            confirmationTimeoutMs: 180000,
+                            pollIntervalMs: 2000
+                        }
+                    );
+
+                    console.log("[Give Vote] Give Vote To Server TX Hash:", voteResult.hash);
+                    console.log("[Give Vote] Give Vote To Server TX Announced Successfully!");
+
+                    const result = await DBPerf(
+                        "Update Give",
+                        "UPDATE Vote V JOIN Identify I ON V.UserID = I.UserID SET Give = true WHERE I.Address = ? AND Give = false",
+                        [address]
+                    );
+                    if (result.affectedRows === 0) {
+                        console.log("Already given");
+                    }
+                } finally {
+                    isGiveVoteProcessing = false;
                 }
 
-                const voteResult = await SignAndAnnounce(
-                    voteTx,
-                    privateKey,
-                    voteFacade,
-                    'https://sym-test-01.opening-line.jp:3001',
-                    {
-                        waitForConfirmation: true,
-                        confirmationTimeoutMs: 180000,
-                        pollIntervalMs: 2000
-                    }
-                );
 
-                console.log("[Give Vote] Give Vote To Server TX Hash:", voteResult.hash);
-                console.log("[Give Vote] Give Vote To Server TX Announced Successfully!");
-
-
-                await DBPerf(
-                    "Update Give",
-                    "UPDATE Vote V JOIN Identify I ON V.UserID = I.UserID SET Give = true WHERE I.Address = ?",
-                    [address]
-                );
             }
 
         } catch (txErr) {
-            onsole.error("[Give Vote] Error:", txErr);
+            console.error("[Give Vote] Error:", txErr);
             return res.status(500).json({ message: "Internal TX Error: トランザクションエラーが発生しました。" });
         }
 
         // バックエンドで定義するテーマと終了日時
         const theme = "知床";
-
-        const photos = await DBPerf(
-            "Get Photo List",
-            `SELECT PhotoID, PhotoPath, Comment FROM Photos`,
+        const mosaicId = await DBPerf(
+            "Get Active MosaicId",
+            "SELECT MosaicID FROM Mosaic WHERE CreateTime <= NOW() AND ExpireTime >= NOW() ORDER BY CreateTime DESC LIMIT 1",
             []
+        );
+        if (!mosaicId.length) {
+            return res.status(400).json({ message: "現在開催中のトーナメントがありません" });
+        }
+        const mosaicIdHex = mosaicId[0].MosaicID;
+        const userVote = await LeftToken(address, mosaicIdHex, nodeUrl) ?? 0;
+        console.log(`User ${address} has ${userVote} vote tokens left.`);
+
+        // すでに取得している mosaicIdHex を利用
+        let photos = await DBPerf(
+            "Get Photo List",
+            `SELECT PhotoID, PhotoPath, Comment 
+            FROM Photos 
+            WHERE MosaicID = ?`,
+            [mosaicIdHex]
         );
 
         const expireResult = await DBPerf(
@@ -177,10 +238,19 @@ router.get('/PhotoList', async (req, res) => {
 
         const expireTime = expireResult[0]?.ExpireTime ?? null;
 
+        // 残り投票数（userVoteが1以上なら1、0なら0）
+        const votesResult = await DBPerf(
+            "Get Vote Left",
+            `SELECT (NOT Vote) + 0 AS VoteNumber FROM Vote V JOIN Identify I ON V.UserID = I.UserID WHERE I.Address = ?`,
+            [address]
+        );
+        const votesLeft = votesResult[0]?.VoteNumber ?? 0;
+
         res.status(200).json({
             theme,
             expireTime,
-            photos
+            photos,
+            votesLeft
         });
 
     } catch (err) {
@@ -192,17 +262,18 @@ router.get('/PhotoList', async (req, res) => {
 // =====================================================================
 // 写真追加API
 // =====================================================================
-router.post('/Upload', async (req, res) => {
+router.post('/Upload', upload.single('photo'), async (req, res) => {
     console.log("Tournament-/Upload-API is running");
 
     try {
-        const { privateKey, comment } = req.body;
+        const privateKey = req.body.privateKey;
+        const comment = req.body.comment;
         if (!privateKey || !comment) {
             console.log("Missing required fields in Upload request");
             return res.status(400).json({ message: "privateKey and Comment are required" });
         }
 
-        if (!req.files?.photo) {
+        if (!req.file) {
             console.log("Missing required fields in Upload request");
             return res.status(400).json({ message: "Photo is required" });
         }
@@ -216,19 +287,27 @@ router.post('/Upload', async (req, res) => {
             return res.status(404).json({ message: "ユーザーが存在しません" });
         }
         const userId = userResult[0].UserID;
-        const PhotoPath = SaveIcon(req.files.photo[0], "photographs");
+        const PhotoPath = SaveIcon(req.file, "photographs");
         console.log("Photo saved at:", PhotoPath);
 
+        const mosaicId = await DBPerf(
+                "Get Active MosaicId",
+                "SELECT MosaicID FROM Mosaic WHERE CreateTime <= NOW() AND ExpireTime >= NOW() ORDER BY CreateTime DESC LIMIT 1",
+                []
+            );
+        const mosaicIdHex = mosaicId[0].MosaicID;
         //写真投稿をDBに保存
         const result = await DBPerf(
             "INSERT Photos",
-            "INSERT INTO Photos(UserID, PhotoPath, Comment) VALUES (?, ?, ?)",
-            [userId, PhotoPath, comment]
+            `INSERT INTO Photos(UserID, PhotoPath, Comment, MosaicID)
+            VALUES (?, ?, ?, ?)`,
+            [userId, PhotoPath, comment, mosaicIdHex]
         );
 
         res.status(201).json({
             message: "Uploaded successfully",
-            photoId: result.insertId
+            photoId: result.insertId,
+            PhotoPath
         });
     } catch (err) {
         console.error("Error: Tournament-/Upload", err);
@@ -245,12 +324,13 @@ router.post('/Upload', async (req, res) => {
 router.post('/Vote', async (req, res) => {
     console.log("Tournament-/Vote-API is running");
 
-    const { privateKey, photoId } = req.body;
+    const { textPrivateKey, photoId } = req.body;
+    const privateKey = new PrivateKey(textPrivateKey);
     if (!privateKey || !photoId) {
         console.log("Missing required fields in Upload request");
         return res.status(400).json({ message: "privateKey and photoId are required" });
     }
-    const userAddress = GetAddress("testnet", privateKey); //投票者のアドレス
+    const userAddress = GetAddress("testnet", textPrivateKey); //投票者のアドレス
     const nodeUrl = 'https://sym-test-01.opening-line.jp:3001';
 
 
@@ -275,8 +355,8 @@ router.post('/Vote', async (req, res) => {
         );
 
         const mosaicId = await DBPerf(
-            "Get MosaicId",
-            "SELECT MosaicId FROM Mosaic ",
+            "Get Active MosaicId",
+            "SELECT MosaicID FROM Mosaic WHERE CreateTime <= NOW() AND ExpireTime >= NOW() ORDER BY CreateTime DESC LIMIT 1",
             []
         );
         if (!mosaicId.length) {
@@ -290,9 +370,15 @@ router.post('/Vote', async (req, res) => {
             if (!users.length) {
                 return res.status(404).json({ message: "ユーザーが見つかりません" });
             }
-            const voteRight = users[0].Vote;
 
-            if (!voteRight) { //falseの時
+            if (users[0].Vote === true || users[0].Vote === 1) {
+                console.log("Already voted");
+                return res.status(400).json({ message: "このトーナメントでは既に投票済みです" });
+            }
+
+            const userVote = await LeftToken(userAddress, mosaicIdHex, nodeUrl);
+
+            if (userVote == 0n) {
                 console.log("No Vote to Right");
                 return res.status(400).json({ message: "投票権がありません" });
             }
@@ -306,9 +392,9 @@ router.post('/Vote', async (req, res) => {
         //投票（トークン送信）トランザクションを作成
         try {
             console.log("[Vote] Creating Vote To Server Transaction...");
-            const { voteTx, keyPair, voteFacade } = CreateTransferTx({
+            const { tx, keyPair, facade } = CreateTransferTx({
                 networkType: 'testnet',
-                senderPrivateKey: privateKey,
+                senderPrivateKey: textPrivateKey,
                 recipientRawAddress: SendToAddress,
                 messageText: `Vote`,
                 fee: 100_000n,
@@ -327,15 +413,14 @@ router.post('/Vote', async (req, res) => {
             //手数料が足りているかどうか
             const currencyMosaicId = await GetCurrencyMosaicId(nodeUrl);
             const xymAmount = await LeftToken(userAddress, currencyMosaicId, nodeUrl);
-            const transferFee = BigInt(voteTx.maxFee);
+            const transferFee = tx.fee;
             if (xymAmount < transferFee) {
                 throw new Error(`手数料用XYM不足です: 必要=${transferFee.toString()} / 保有=${xymAmount.toString()}`);
             }
 
             const voteResult = await SignAndAnnounce(
-                voteTx,
+                tx,
                 privateKey,
-                voteFacade,
                 'https://sym-test-01.opening-line.jp:3001',
                 {
                     waitForConfirmation: true,
@@ -350,7 +435,7 @@ router.post('/Vote', async (req, res) => {
             const userId = users[0].UserID;
             await DBPerf(
                 "Update vote",
-                "UPDATE Vote SET Vote = false WHERE UserID = ?",
+                "UPDATE Vote SET Vote = true WHERE UserID = ?",
                 [userId]
             );
 

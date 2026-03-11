@@ -6,7 +6,6 @@ import { fileURLToPath } from 'url';
 //関数読み込み
 import DBPerf from '../Tools/DBPerf.js';
 import LeftToken from '../Tools/LeftToken.js';
-import GetCurrencyMosaicId from '../Tools/GetCurrencyMosaicId.js';
 import GetAddress from '../Tools/GetAddress.js';
 
 // ==========================
@@ -51,14 +50,21 @@ router.get('/Auction', async (req, res) => {
         const expireTime = expireResult[0]?.ExpireTime || null;
 
         //写真リスト + 入札額を取得
-        const photos = await DBPerf(
-            "Get photos",
-            "SELECT PhotoID, PhotoPath, Amount FROM Photos",
+        const mosaicId = await DBPerf(
+            "Get Active MosaicId",
+            "SELECT MosaicID FROM Mosaic WHERE CreateTime <= NOW() AND ExpireTime >= NOW() ORDER BY CreateTime DESC LIMIT 1",
             []
         );
+        const tournamentMosaicId = mosaicId[0].MosaicID;
 
-        //現在の投票数を取得
-        const currencyMosaicId = await GetCurrencyMosaicId(nodeUrl);
+        // すでに取得している mosaicIdHex を利用
+        let photos = await DBPerf(
+            "Get Photo List",
+            `SELECT PhotoID, PhotoPath, Comment 
+            FROM Photos 
+            WHERE MosaicID = ?`,
+            [tournamentMosaicId]
+        );
 
         const photosList = await Promise.all(
             photos.map(async (photo) => {
@@ -70,9 +76,11 @@ router.get('/Auction', async (req, res) => {
                 const userAddress = addressResult[0]?.Address || null;
 
 
-                const voteCount = userAddress
-                    ? await LeftToken(userAddress, currencyMosaicId, nodeUrl)
-                    : 0;
+                const voteCountBigInt = (userAddress && tournamentMosaicId)
+                    ? await LeftToken(userAddress, tournamentMosaicId, nodeUrl)
+                    : 0n;
+                const voteCount = Number(voteCountBigInt);
+                console.log(`VoteCount: ${voteCount}`);
 
                 // voteCountを追加して返す
                 return { ...photo, voteCount };
@@ -101,12 +109,13 @@ router.post('/Bid', async (req, res) => {
     console.log("Bit-API is running");
     try {
         //フロントからの入力値を取得
-        const { privateKey, photoId, amount } = req.body;
+        const privateKey = req.body.privateKey ?? req.body.textPrivateKey ?? req.body.qrFromSession;
+        const { photoId, amount } = req.body;
 
         //必須項目チェック
         if (privateKey == null || photoId == null || amount == null) {
-            console.log("[Auction] Not photoId, amount");
-            return res.status(400).json({ message: "Bad Request: photoId, amount が不足しています" });
+            console.log("[Auction] Missing required fields: privateKey/photoId/amount");
+            return res.status(400).json({ message: "Bad Request: privateKey, photoId, amount が不足しています" });
         }
 
         const bidAddress = GetAddress("testnet", privateKey); //入札者のアドレス
@@ -128,7 +137,7 @@ router.post('/Bid', async (req, res) => {
 
         const result = await DBPerf(
             "Update amount",
-            "UPDATE Photos SET BidUserId = ?, Amount = ? WHERE PhotoID = ? AND Amount < ?",
+            "UPDATE Photos SET BidUserId = ?, Amount = ? WHERE PhotoID = ? AND (Amount IS NULL OR Amount < ?)",
             [bidUserId, bidAmount, photoId, bidAmount]
         );
 
@@ -136,7 +145,7 @@ router.post('/Bid', async (req, res) => {
             return res.status(409).json({
                 message: "すでにより高い入札があります"
             });
-        } 
+        }
 
         // 登録成功
         res.status(200).json({

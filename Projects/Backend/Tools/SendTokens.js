@@ -1,65 +1,50 @@
-/*==========Manual)==========
+/*========== Manual ==========
 # Input
-facade: 
-signerPrivateKey: 送信者の秘密鍵
-mosaicId: 
-users: 送信対象のアドレスと送信したいモザイク量
-
+originalPrivateKey: 配布元の秘密鍵
+mosaicId: 配布するモザイクID
+users: 配布対象ユーザー [{ address, amount }]
 # Output
-生成したトランザクションを返す
-
-# Detail
-複数のトランザクションをまとめて作成する関数
-トランザクション作成のみ
-モザイク量は固定
+生成した Aggregate Complete Transaction
 ========== Manual ==========*/
+
 import { PrivateKey } from 'symbol-sdk';
 import { SymbolFacade } from 'symbol-sdk/symbol';
 
-async function SendTokens({
-    privateKey,// 配布元の秘密鍵
-    mosaicId,        // 配布するモザイクID
-    users            // 配布対象ユーザー [{ address }, ...]
-}) {
+async function SendTokens({ originalPrivateKey, mosaicId, users }) {
+    // === 入力チェック ===
+    if (!originalPrivateKey) throw new Error('originalPrivateKey is undefined');
+    if (!mosaicId) throw new Error('mosaicId is undefined');
+    if (!Array.isArray(users) || users.length === 0) throw new Error('users array is empty');
+
     // Facade 初期化
     const facade = new SymbolFacade('testnet');
 
-    // サイン用の KeyPairを作成
+    // サイン用 KeyPair 作成
+    const privateKey = new PrivateKey(originalPrivateKey);
     const signer = facade.createAccount(privateKey);
 
-    console.log("mosaicId:", mosaicId);
-    console.log("type:", typeof mosaicId);
-
-    // innerTx（送信トランザクション） を作る
+    // === innerTx（送信トランザクション）作成 ===
     const innerTxs = users.map(user => {
-        if (!user.address) throw new Error('address missing');
-        if (user.amount === undefined) throw new Error('amount missing');
+        if (!user.address) throw new Error('User address missing');
+        if (user.amount === undefined) throw new Error('User amount missing');
 
-        const mosaicIdBigInt = BigInt(
-            mosaicId.startsWith('0x')
-                ? mosaicId
-                : '0x' + mosaicId
-        );
-        console.log("mosaicIdBigInt:", mosaicIdBigInt);
+        // mosaicId と amount を BigInt に変換
+        const mosaicIdBigInt = BigInt(mosaicId.startsWith('0x') ? mosaicId : '0x' + mosaicId);
+        const amountBigInt = BigInt(user.amount);
 
         return facade.transactionFactory.createEmbedded({
             type: 'transfer_transaction_v1',
-            signerPublicKey: signer.publicKey,
+            signerPublicKey: signer.publicKey,   // innerTx signer は aggregate signer と同じ
             recipientAddress: user.address,
-            mosaics: [{
-                mosaicId: mosaicIdBigInt,
-                amount: BigInt(user.amount)
-            }]
+            mosaics: [{ mosaicId: mosaicIdBigInt, amount: amountBigInt }]
         });
     });
-    console.log(innerTxs.length)
 
-    // トランザクションをまとめる
     if (innerTxs.length === 0) throw new Error('No transactions to aggregate');
-    const networkTimestamp = facade.network.fromDatetime(
-        new Date(Date.now() + 2 * 60 * 60 * 1000)
-    );
 
+    // === Aggregate Complete Transaction 作成 ===
+    // deadline は SDK v3 方式（BigInt の timestamp）
+    const networkTimestamp = facade.network.fromDatetime(new Date(Date.now() + 60 * 60 * 1000)); // 1時間後
     const deadline = BigInt(networkTimestamp.timestamp);
 
     const aggregateTx = facade.transactionFactory.create({
@@ -69,8 +54,8 @@ async function SendTokens({
         deadline
     });
 
+    // fee 計算（size * 100）
     aggregateTx.fee = BigInt(aggregateTx.size) * 100n;
-
 
     return aggregateTx;
 }

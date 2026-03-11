@@ -2,16 +2,17 @@ import express from "express";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import { PrivateKey } from 'symbol-sdk';
 
 // symbol-sdk v3
-import { SymbolFacade } from 'symbol-sdk/symbol';
 
 //関数読み込み
 import DBPerf from '../Tools/DBPerf.js';
 import SignAndAnnounce from '../Tools/SignAndAnnounce.js';
-import SendTokens from '../Tools/SendTokens.js'; //複数の相手にまとめて送信する関数
-import GetCurrencyMosaicId from '../Tools/GetCurrencyMosaicId.js';
+import CreateTransferTx from '../Tools/CreateTransferTx.js';
 import GetAddress from '../Tools/GetAddress.js';
+import LeftToken from '../Tools/LeftToken.js';
+import GetCurrencyMosaicId from '../Tools/GetCurrencyMosaicId.js';
 
 // ==========================
 // 環境変数の読み込み
@@ -23,6 +24,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const router = express.Router();
 
+router.use(express.json());
 
 
 
@@ -34,19 +36,19 @@ router.post('/AuctionBuy', async (req, res) => {
         console.log("aquctionBuy-API is running");
         const nodeUrl = 'https://sym-test-01.opening-line.jp:3001';
 
-        //終了日時
-        const expireResult = await DBPerf("Get ExpireTime",
-            "SELECT ExpireTime FROM Mosaic"
-        );
-        const now = new Date();
-        const expireTime = expireResult[0]?.ExpireTime;
-        const expire = new Date(expireTime);
-        console.log("now:", now);
-        console.log("expire:", expire);
+        // //終了日時
+        // const expireResult = await DBPerf("Get ExpireTime",
+        //     "SELECT ExpireTime FROM Mosaic"
+        // );
+        // const now = new Date();
+        // const expireTime = expireResult[0]?.ExpireTime;
+        // const expire = new Date(expireTime);
+        // console.log("now:", now);
+        // console.log("expire:", expire);
 
-        if (!expireTime || now <= expire) {
-            return res.status(400).json({ message: "オークション期間中です" });
-        }
+        // if (!expireTime || now <= expire) {
+        //     return res.status(400).json({ message: "オークション期間中です" });
+        // }
 
 
 
@@ -72,7 +74,12 @@ router.post('/AuctionBuy', async (req, res) => {
 
             //購入できるものを探す
             const userData = await DBPerf("Search amount",
-                "SELECT p.PhotoID, p.PhotoPath, p.Amount, i.Address FROM Photos p JOIN Identify i ON p.UserID = i.UserID WHERE p.BidUserID = ?",
+                `SELECT p.PhotoID, p.PhotoPath, p.Amount, i.Address, p.MosaicID
+                FROM Photos p
+                JOIN Identify i ON p.UserID = i.UserID
+                WHERE p.BidUserID = ? 
+                AND p.Purchased = false
+                AND p.MosaicID IS NOT NULL`,
                 [buyUserId]
             );
             if (!userData.length) {
@@ -80,34 +87,50 @@ router.post('/AuctionBuy', async (req, res) => {
                 return res.status(200).json({ message: "購入できる写真がありません" });
             }
 
-            const users = userData.map(photo => ({
-                address: photo.Address,
-                amount: BigInt(photo.Amount) * 1_000_000n
-            }));
-
-            //購入トランザクションを作成
+            const txHashes = [];
             const currencyMosaicId = await GetCurrencyMosaicId(nodeUrl);
-            const facade = new SymbolFacade('testnet');
-            console.log("[Auction Buy] Creating Send XYM Transaction...");
-            const aggregateTx = await SendTokens({
-                facade,
-                signerPrivateKey: privateKey,
-                mosaicId: currencyMosaicId,
-                users
-            });
 
-            // 署名とアナウンス
-            console.log("[Auction Buy] Announcing Send XYM Transaction...");
+            for (const photo of userData) {
+                const sendAmount = BigInt(photo.Amount) * 1_000_000n; // XYM → micro-XYM
+                console.log("[Buy Photo] Buy Photo Transaction...");
+                const { tx } = CreateTransferTx({
+                    networkType: 'testnet',
+                    senderPrivateKey: privateKey,
+                    recipientRawAddress: photo.Address,
+                    messageText: 'Auction Buy',
+                    fee: 100_000n,
+                    mosaics: [
+                        {
+                            mosaicId: BigInt(`0x${currencyMosaicId}`), // XYM を送る
+                            amount: sendAmount,
+                        },
+                    ],
+                    deadlineHours: 2,
+                });
 
-            const sendResult = await SignAndAnnounce(
-                aggregateTx,
-                privateKey,
-                facade,
-                nodeUrl,
-                { waitForConfirmation: true }
-            );
-            console.log("[Auction Buy] Send XYM TX Hash:", sendResult.hash);
-            console.log("[Auction Buy] Send XYM Token TX Announced Successfully!");
+                //手数料が足りているかどうか
+                const xymAmount = await LeftToken(buyAddress, currencyMosaicId, nodeUrl); // XYM残高取得
+                const transferFee = tx.fee;
+                console.log("[DEBUG] BuyAddress:", buyAddress);
+                if (BigInt(xymAmount) < transferFee) {
+                    throw new Error(`手数料用XYM不足です: 必要=${transferFee.toString()} / 保有=${xymAmount.toString()}`);
+                }
+
+                console.log("[Buy Photo] Announcing Buy Photo Transaction...");
+                const sendResult = await SignAndAnnounce(
+                    tx,
+                    new PrivateKey(privateKey),
+                    'https://sym-test-01.opening-line.jp:3001',
+                        {
+                            waitForConfirmation: true,
+                            confirmationTimeoutMs: 180000,
+                            pollIntervalMs: 2000
+                        }
+                );
+                txHashes.push(sendResult.hash);
+                console.log("[Auction Buy] Send XYM TX Hash:", sendResult.hash);
+            }
+            console.log("[Auction Buy] All transfer transactions announced successfully!");
 
             // DB保存
             for (const photo of userData) {
@@ -116,13 +139,22 @@ router.post('/AuctionBuy', async (req, res) => {
                     "INSERT INTO Bought (PhotoID, UserID, PhotoPath, BoughtAmount) VALUES (?, ?, ?, ?)",
                     [photo.PhotoID, buyUserId, photo.PhotoPath, photo.Amount]
                 );
+
+                // PhotosテーブルのPurchasedフラグをtrueに更新
+                await DBPerf(
+                    "Update Purchased Flag",
+                    "UPDATE Photos SET Purchased = true WHERE PhotoID = ?",
+                    [photo.PhotoID]
+                );
+
             }
 
 
             // 登録成功
             res.status(200).json({
                 message: "購入成功",
-                userData
+                userData,
+                txHashes
             });
         } catch (txErr) {
             console.log("Error: Auction Buy", txErr);
