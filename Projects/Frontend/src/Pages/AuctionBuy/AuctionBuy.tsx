@@ -148,6 +148,7 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
         <h1 className="auction-buy-title">購入一覧</h1>
         <div className="auction-buy-actions">
           <ConfirmButton label="オークション" type="button" onClick={() => navigate("/auction")} />
+          <ConfirmButton label="トーナメント" type="button" onClick={() => navigate("/tournament")} />
         </div>
       </header>
 

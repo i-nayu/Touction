@@ -227,10 +227,9 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
                       return;
                     }
 
-                    setSelectedPhoto(photo);
                     // 秘密鍵があればモーダルを開かず直接送信
                     if (selectedQrText) {
-                      handleQrUpload();
+                      handleQrUpload(photo);
                     } else {
                       openQrModal(photo);
                     }
