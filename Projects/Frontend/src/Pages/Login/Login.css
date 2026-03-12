@@ -6,14 +6,11 @@
   color: #ffffff;
 }
 
-.register-tab {
-  display: flex;
-  flex-direction: row;
+.login-tab {
   margin-bottom: 28px;
-  gap: 5px;
 }
 
-.register-tab h1 {
+.login-tab h1 {
   font-size: 30px;
   font-weight: 600;
   margin: 0;
@@ -112,7 +109,7 @@
     padding-top: 20px;
   }
 
-  .register-tab h1{
+  .register-tab h1 {
     font-size: 24px;
   }
 

@@ -5,6 +5,9 @@ import { useNavigate } from "react-router-dom";
 import ConfirmButton from "../../Components/ConfirmButton/ConfirmButton";
 import jsQR from "jsqr";
 
+const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_PHOTO_SIZE_MB = 5;
+
 function UploadPhoto() {
   const navigate = useNavigate();
   const [selectedQrFile, setSelectedQrFile] = useState<File | null>(null);
@@ -66,6 +69,11 @@ function UploadPhoto() {
       return;
     }
 
+    if (selectedPhotoFile.size > MAX_PHOTO_SIZE_BYTES) {
+      setMessage(`写真サイズが上限を超えています（上限: ${MAX_PHOTO_SIZE_MB}MB）`);
+      return;
+    }
+
     if (!comment.trim()) {
       setMessage("コメントを入力してください");
       return;
@@ -89,6 +97,11 @@ function UploadPhoto() {
 
       const data = await res.json().catch(() => null);
       if (!res.ok) {
+        if (res.status === 413) {
+          setMessage(`写真サイズが上限を超えています（上限: ${MAX_PHOTO_SIZE_MB}MB）`);
+          return;
+        }
+
         setMessage(data?.message ?? "アップロードに失敗しました");
         return;
       }
@@ -156,6 +169,11 @@ function UploadPhoto() {
               accept="image/*"
               onChange={(event) => {
                 const file = event.target.files?.[0] ?? null;
+                if (file && file.size > MAX_PHOTO_SIZE_BYTES) {
+                  setSelectedPhotoFile(null);
+                  setMessage(`写真サイズが上限を超えています（上限: ${MAX_PHOTO_SIZE_MB}MB）`);
+                  return;
+                }
                 setSelectedPhotoFile(file);
               }}
             />

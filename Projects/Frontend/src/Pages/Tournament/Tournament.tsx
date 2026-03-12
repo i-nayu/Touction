@@ -18,6 +18,7 @@ function Tournament() {
   const [selectedQrFile, setSelectedQrFile] = useState<File | null>(null);
   const [selectedQrText, setSelectedQrText] = useState<string | null>(null);
   const [isUploadingQr, setIsUploadingQr] = useState(false);
+  const [voteStatusMessage, setVoteStatusMessage] = useState<string>("");
 
   // QR秘密鍵を sessionStorage から取得
   useEffect(() => {
@@ -142,6 +143,7 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
     }
 
     setIsUploadingQr(true);
+    setVoteStatusMessage("投票中...");
     try {
       const res = await fetch("/Tournament/Vote", {
         method: "POST",
@@ -154,12 +156,18 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
         }),
       });
 
+      const data = await res.json().catch(() => null);
+      const backendMessage = data?.message ?? "サーバーエラーが発生しました";
+
       if (!res.ok) {
-        toast.error("秘密鍵の送信に失敗しました");
+        setVoteStatusMessage(`投票失敗: ${backendMessage}`);
+        toast.error(backendMessage);
         return;
       }
 
-      toast.success("秘密鍵を送信しました");
+      setVoteStatusMessage(backendMessage);
+      toast.success(backendMessage);
+      setVotesLeft((current) => (current !== null ? Math.max(0, current - 1) : current));
 
       // sessionStorageに保存（初回アップロードの場合のみ）
       if (!selectedQrText) {
@@ -170,6 +178,7 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
       closeQrModal();
     } catch (err) {
       const message = err instanceof Error ? err.message : "通信エラー";
+      setVoteStatusMessage(`投票失敗: ${message}`);
       toast.error(message);
     } finally {
       setIsUploadingQr(false);
@@ -201,6 +210,7 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
       <section className="photo-section">
         <div>
           <h2 className="photo-section-title">投票する写真を選んでください</h2>
+          {voteStatusMessage && <p className="tournament-message">{voteStatusMessage}</p>}
         </div>
         <div className="photo-grid">
           {isLoading && <p className="tournament-message">読み込み中...</p>}
@@ -212,6 +222,11 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
                   icon={`http://localhost:5001${photo.imageUrl}`}
                   label={photo.title}
                   onClick={() => {
+                    const shouldVote = window.confirm("この写真に投票しますか？");
+                    if (!shouldVote) {
+                      return;
+                    }
+
                     setSelectedPhoto(photo);
                     // 秘密鍵があればモーダルを開かず直接送信
                     if (selectedQrText) {
@@ -253,7 +268,7 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
             <div className="qr-modal-actions">
               <ConfirmButton label="閉じる" type="button" onClick={closeQrModal} />
               <ConfirmButton
-                label={isUploadingQr ? "送信中..." : "サーバーに送信"}
+                label={isUploadingQr ? "投票中..." : "サーバーに送信"}
                 type="button"
                 onClick={handleQrUpload}
               />

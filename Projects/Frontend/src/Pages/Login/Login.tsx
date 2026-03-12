@@ -1,14 +1,18 @@
-import "./Register.css";
+import "./Login.css";
 import { useState } from "react";
 import jsQR from "jsqr";
+import QRCode from "qrcode";
+import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import InputField from "../../Components/InputField/InputField";
 import ConfirmButton from "../../Components/ConfirmButton/ConfirmButton";
 
-function Register() {
+function Login() {
   const navigate = useNavigate();
+  const [privateKey, setPrivateKey] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
   const [qrCode, setQrCode] = useState("");
   const [registeredAddress, setRegisteredAddress] = useState("");
 
@@ -33,20 +37,29 @@ function Register() {
     }
   }
 
-  async function handleSubmit() {
+  // 修正ポイント1: アロー関数に変更し、Reactのフォームイベント型を明示（TSの場合）
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
     // エラー表示をリセット
     setError("");
     setSuccess("");
 
+    if (!privateKey) {
+      setError("秘密鍵を入力してください。");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
-      const res = await fetch("/Register/Submit", {
+      console.log("送信データ:", { privateKey });
+      const res = await fetch("/Login/Submit", {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ privateKey }),
       });
 
       const data = await res.json();
@@ -55,9 +68,10 @@ function Register() {
       if (!res.ok) {
         setError("登録に失敗しました。もう一度お試しください。");
       } else {
-        setQrCode(data.qrCode);
+        const generatedQrCode = await QRCode.toDataURL(privateKey, { errorCorrectionLevel: "H" });
+        setQrCode(generatedQrCode);
         setRegisteredAddress(data.address ?? "");
-        setSuccess("アカウントを作成しました。ログインしてください。");
+        setSuccess("登録しました。");
       }
     } catch (err) {
       console.error(err);
@@ -95,29 +109,31 @@ async function decodeQRCodeFromDataURL(dataURL: string): Promise<string | null> 
 
   return (
     <div className="register-page">
-      <div className="register-tab">
+      <div className="login-tab">
         <h1>新規登録</h1>
-         <ConfirmButton 
-                label="秘密鍵を持っている方はこちら" 
-                type="button" 
-                onClick={async () => {
-                    navigate("/Login");
-                }}
-              />
       </div>
 
       {/* エラーメッセージや成功メッセージの表示領域があると親切です */}
       {error && <p className="error-message" style={{ color: "red" }}>{error}</p>}
       {success && <p className="success-message" style={{ color: "green" }}>{success}</p>}
 
-      <div className="register-container">
-        {!qrCode && (
+      <form onSubmit={handleSubmit}>
+        <div className="register-container">
           <div className="register-form">
+            <div className="input-group">
+              <label htmlFor="username">秘密鍵を入力してください</label>
+              <InputField
+                name="username"
+                placeholder="秘密鍵を入力"
+                type="text"
+                value={privateKey} // 追記: 制御コンポーネントにするためvalueを指定
+                onChange={(e) => setPrivateKey(e.target.value)}
+              />
+            </div>
             <div className="button-group">
-              <ConfirmButton label={isSubmitting ? "生成中..." : "アカウント生成"} type="button" onClick={handleSubmit} />
+              <ConfirmButton label="登録" type="submit"/>
             </div>
           </div>
-        )}
           
           {qrCode && (
             <div className="qr-code-area">
@@ -169,9 +185,10 @@ async function decodeQRCodeFromDataURL(dataURL: string): Promise<string | null> 
               />
             </div>
           )}
-      </div>
+        </div>
+      </form>
     </div>
   );
 }
 
-export default Register;
+export default Login;
