@@ -15,7 +15,6 @@ function UploadPhoto() {
   const [comment, setComment] = useState("");
   const [message, setMessage] = useState("秘密鍵QRコード・写真・コメントを入力してください");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [privateKey, setPrivateKey] = useState("aaaa");
 
   async function decodeQRCodeFromFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -85,7 +84,6 @@ function UploadPhoto() {
 
       const formData = new FormData();
       formData.append("privateKey", privateKey);
-      setPrivateKey(privateKey);
       formData.append("comment", comment.trim());
       formData.append("photo", selectedPhotoFile);
 
@@ -132,7 +130,6 @@ function UploadPhoto() {
         <form className="upload-photo-form" onSubmit={handleSubmit}>
           <div className="upload-photo-group">
             <label htmlFor="upload-photo-qr">1. 秘密鍵QRコード画像</label>
-            <p>{privateKey}</p>
 <input
   id="upload-photo-qr"
   type="file"
@@ -145,7 +142,6 @@ function UploadPhoto() {
       try {
         const key = await decodeQRCodeFromFile(file);
         const savedPrivateKey = sessionStorage.getItem("qrCodeData");
-        setPrivateKey(key); // 自動で秘密鍵にセット
         setMessage(`秘密鍵を取得しました: ${savedPrivateKey}`);
         console.log("デバッグ: QR文字列", key);
       } catch (err) {
