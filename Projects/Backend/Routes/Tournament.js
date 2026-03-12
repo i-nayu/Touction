@@ -111,7 +111,7 @@ router.get('/', (req, res) => {
 
     // フロントエンドのビルド済みHTMLを返す
     res.sendFile(
-        path.join(__dirname, "..", "..", "Frontend", "dist", "index.html")
+        path.join(__dirname, "..", "public", "index.html")
     );
 }
 );
@@ -382,7 +382,7 @@ router.post('/Upload', uploadPhotoMiddleware, async (req, res) => {
         if (!userResult.length) {
             return res.status(404).json({ message: "ユーザーが存在しません" });
         }
-        const PhotoPath = SaveIcon(req.file, "photographs");
+        const PhotoPath = SaveIcon(req.file);
         console.log("Photo saved at:", PhotoPath);
 
         const mosaicId = await DBPerf(
