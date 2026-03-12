@@ -307,7 +307,11 @@ router.post('/PhotoList', async (req, res) => {
 
         const expireResult = await DBPerf(
             "Get ExpireTime",
-            `SELECT ExpireTime FROM Mosaic`,
+            `SELECT ExpireTime 
+            FROM Mosaic 
+            WHERE CreateTime <= NOW() AND ExpireTime >= NOW() 
+            ORDER BY CreateTime DESC 
+            LIMIT 1`,
             []
         );
 

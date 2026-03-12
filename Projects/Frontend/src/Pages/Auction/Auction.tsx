@@ -1,6 +1,8 @@
 import "./Auction.css";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import ConfirmButton from "../../Components/ConfirmButton/ConfirmButton";
+import { useNavigate } from "react-router-dom";
 
 type AuctionPhoto = {
 	PhotoID: number;
@@ -16,6 +18,7 @@ type AuctionResponse = {
 };
 
 function Auction() {
+	const navigate = useNavigate();
 	const [photos, setPhotos] = useState<AuctionPhoto[]>([]);
 	const [expireTime, setExpireTime] = useState<string>("-");
 	const [isLoading, setIsLoading] = useState(true);
@@ -109,7 +112,16 @@ function Auction() {
 	return (
 		<main className="auction-page">
 			<header className="auction-header">
+				<div className="auction-header-left">
 				<h1 className="auction-title">オークション</h1>
+				<ConfirmButton
+                    label="トーナメント"
+                    type="button"
+                    onClick={async () => {
+                        navigate("/Tournament");
+                    }}
+                />
+				</div>
 				<p className="auction-expire">終了時刻: {expireTime}</p>
 			</header>
 

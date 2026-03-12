@@ -141,8 +141,6 @@ function UploadPhoto() {
     if (file) {
       try {
         const key = await decodeQRCodeFromFile(file);
-        const savedPrivateKey = sessionStorage.getItem("qrCodeData");
-        setMessage(`秘密鍵を取得しました: ${savedPrivateKey}`);
         console.log("デバッグ: QR文字列", key);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "QRコード取得失敗";
@@ -152,8 +150,6 @@ function UploadPhoto() {
     }
   }}
 />
-            {selectedQrFile && <p className="upload-photo-file-name">選択中: {selectedQrFile.name}</p>}
-            <p className="upload-photo-file-name">送信時にQRコードを自動で文字列化します</p>
           </div>
 
           <div className="upload-photo-group">
@@ -173,7 +169,6 @@ function UploadPhoto() {
                 setSelectedPhotoFile(file);
               }}
             />
-            {selectedPhotoFile && <p className="upload-photo-file-name">選択中: {selectedPhotoFile.name}</p>}
           </div>
 
           <div className="upload-photo-group">
