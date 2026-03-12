@@ -1,35 +1,39 @@
-CREATE TABLE Identify (
-    UserID VARCHAR(255) PRIMARY KEY,
-    Address VARCHAR(255) NOT NULL UNIQUE
+CREATE TABLE IF NOT EXISTS Identify (
+    Address VARCHAR(255) NOT NULL UNIQUE PRIMARY KEY
 );
 
-CREATE TABLE Mosaic (
+CREATE TABLE IF NOT EXISTS Mosaic (
     MosaicID VARCHAR(255) NOT NULL PRIMARY KEY,
-    CreateTime DATETIME NOT NULL, -- トーナメント作成日時
-    ExpireTime DATETIME NOT NULL -- トーナメント終了日時
+    CreateTime DATETIME NOT NULL,
+    ExpireTime DATETIME NOT NULL
 );
-CREATE TABLE Photos (
+CREATE TABLE IF NOT EXISTS Photos (
     PhotoID INT AUTO_INCREMENT PRIMARY KEY,
-    UserID VARCHAR(255),
+    MosaicID VARCHAR(255) NOT NULL,
+    Address VARCHAR(255),
     PhotoPath VARCHAR(500),
     Comment TEXT,
-    BidUserID VARCHAR(255),   -- 現在の最高入札者
-    Amount INT,           -- 現在の最高額
-    FOREIGN KEY (UserID) REFERENCES Identify(UserID),
-    FOREIGN KEY (MaxBidUserID) REFERENCES Identify(UserID)
-
+    BidUserID VARCHAR(255),
+    Amount INT,
+    Purchased BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (Address) REFERENCES Identify(Address),
+    FOREIGN KEY (BidUserID) REFERENCES Identify(Address),
+    FOREIGN KEY (MosaicID) REFERENCES Mosaic(MosaicID)
 );
 
-CREATE TABLE Vote (
-    UserID VARCHAR(255) PRIMARY KEY,
-    FOREIGN KEY (UserID) REFERENCES Identify(UserID),
-    Vote BOOLEAN NOT NULL DEFAULT TRUE
+CREATE TABLE IF NOT EXISTS Vote (
+    Address VARCHAR(255) NOT NULL PRIMARY KEY,
+    Vote BOOLEAN NOT NULL DEFAULT FALSE,
+    Give BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (Address) REFERENCES Identify(Address)
 );
 
-CEATE TABLE BOUGHT (
-    PhotoID INT AUTO_INCREMENT PRIMARY KEY,
-    UserID VARCHAR(255), --購入者
+CREATE TABLE IF NOT EXISTS Bought (
+    PhotoID INT NOT NULL PRIMARY KEY,
+    Address VARCHAR(255),
     PhotoPath VARCHAR(500),
-    Amount INT --購入額
-)
+    BoughtAmount INT,
+    FOREIGN KEY (Address) REFERENCES Identify(Address),
+    FOREIGN KEY (PhotoID) REFERENCES Photos(PhotoID)
+);
 

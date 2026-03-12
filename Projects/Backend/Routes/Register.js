@@ -11,7 +11,6 @@ import { PrivateKey } from 'symbol-sdk';
 
 //関数読み込み
 import DBPerf from '../Tools/DBPerf.js';
-import CreateCookie from '../Tools/CreateCookie.js'; // クッキー作成関数
 
 // ==========================
 // 環境変数の読み込み
@@ -48,26 +47,6 @@ router.get('/', (req, res) => {
 router.post('/Submit', async (req, res) => {
     console.log("Submit-API is running");
     try {
-        //フロントからの入力値を取得
-        const { userId } = req.body;
-
-        //必須項目チェック
-        if (!userId) {
-            return res.status(400).json({ message: "Bad Request: userId が不足しています" })
-        }
-
-        // ユーザー重複チェック
-        const exist = await DBPerf(
-            "Duplicate Check For UserID",
-            "SELECT * FROM Identify WHERE UserID = ?",
-            [userId]
-        );
-
-        if (exist.length > 0) {
-            return res.status(409).json({
-                message: "Conflict: このユーザーIDはすでに使われています"
-            });
-        }
 
         // Symbolブロックチェーン用アカウント生成
         const facade = new SymbolFacade('testnet');
@@ -78,13 +57,20 @@ router.post('/Submit', async (req, res) => {
         const privateKeyString = privateKey.toString();
 
         console.log("アドレス:", address);
+        console.log("秘密鍵:", privateKeyString);
 
 
         // DB保存
         await DBPerf(
             "Insert Into Identify",
-            "INSERT INTO Identify (UserID, Address) VALUES (?, ?)",
-            [userId, address]
+            "INSERT INTO Identify (Address) VALUES (?)",
+            [address]
+        );
+
+        await DBPerf(
+            "Insert Into Vote",
+            "INSERT INTO Vote (Address) VALUES (?)",
+            [address]
         );
 
         // 秘密鍵をQRコード化
@@ -106,7 +92,8 @@ router.post('/Submit', async (req, res) => {
 
         // 登録成功
         res.status(200).json({
-            qrCode: qr
+            qrCode: qr,
+            address
         });
 
     } catch (err) {

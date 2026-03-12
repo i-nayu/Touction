@@ -3,7 +3,7 @@
   width: min(1120px, calc(100vw - 48px));
   margin: 0 auto;
   padding: 32px 0 48px;
-  color: #ffffff;
+  color: var(--text);
 }
 
 .auction-buy-header {
@@ -19,9 +19,14 @@
   margin: 0;
 }
 
+.auction-buy-actions {
+  display: flex;
+  gap: 12px;
+}
+
 .auction-buy-list-wrap {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 18px;
 }
@@ -61,8 +66,8 @@
 }
 
 .auction-buy-item {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
 }

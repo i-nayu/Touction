@@ -30,7 +30,7 @@ async function waitForConfirmation(nodeUrl, hash, {
     throw new Error(`Transaction confirmation timeout: ${hash}`);
 }
 
-export default async function SignAndAnnounce(tx, privateKey, facade, nodeUrl, options = {}) {
+export default async function SignAndAnnounce(tx, privateKey, nodeUrl, options = {}) {
     // Startup Log
     const logOwner = "SignAndAnnounce";
     console.log(`\n${logOwner}-Function is running!\n`);
@@ -51,9 +51,11 @@ export default async function SignAndAnnounce(tx, privateKey, facade, nodeUrl, o
     });
     console.log(`[${logOwner}] Input => nodeUrl: ${nodeUrl}`);
 
+    // Facade 初期化
+    const facade = new SymbolFacade('testnet');
+
     // 秘密鍵 → KeyPair (v3推奨の書き方)
-    const privateKeyObject = new PrivateKey(privateKey.trim());
-    const account = facade.createAccount(privateKeyObject);
+    const account = facade.createAccount(privateKey);
 
     try {
         // 署名 (v3 SDK)

@@ -37,7 +37,7 @@ import { generateMosaicId } from 'symbol-sdk/symbol';
 
 export function CreateMosaicTx({
     networkType = 'testnet',
-    senderPrivateKey,
+    privateKey,
     transferable = true,
     duration = 86400n,
     fee = 1_000_000n,
@@ -46,7 +46,6 @@ export function CreateMosaicTx({
 
     const facade = new SymbolFacade(networkType);
 
-    const privateKey = new PrivateKey(senderPrivateKey.trim());
     const keyPair = facade.createAccount(privateKey);
 
     const safeDeadlineHours = Math.min(Math.max(Number(deadlineHours) || 2, 1), 2);

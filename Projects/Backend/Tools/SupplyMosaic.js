@@ -4,7 +4,7 @@ import { SymbolFacade } from 'symbol-sdk/symbol';
 
 export const CreateSupplyTx = ({
     networkType = 'testnet',
-    senderPrivateKey,
+    privateKey,
     supply = 1_000_000n,
     mosaicId,
     fee = 1_000_000n,
@@ -14,7 +14,7 @@ export const CreateSupplyTx = ({
     const logOwner = "CreateSupplyTx";
     console.log(`\n[${logOwner}] Starting...`);
 
-    if (!senderPrivateKey)
+    if (!privateKey)
         throw new Error("senderPrivateKey is undefined");
 
     if (!mosaicId)
@@ -28,7 +28,6 @@ export const CreateSupplyTx = ({
     const facade = new SymbolFacade(networkType);
 
     // Account
-    const privateKey = new PrivateKey(senderPrivateKey.trim());
     const keyPair = facade.createAccount(privateKey);
 
     // Deadline

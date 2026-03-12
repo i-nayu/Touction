@@ -1,10 +1,12 @@
 import "./Auction.css";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import ConfirmButton from "../../Components/ConfirmButton/ConfirmButton";
+import { useNavigate } from "react-router-dom";
 
 type AuctionPhoto = {
 	PhotoID: number;
-	UserID: number;
+	Address: string;
 	PhotoPath: string;
 	Amount: number;
 	voteCount: number;
@@ -16,6 +18,7 @@ type AuctionResponse = {
 };
 
 function Auction() {
+	const navigate = useNavigate();
 	const [photos, setPhotos] = useState<AuctionPhoto[]>([]);
 	const [expireTime, setExpireTime] = useState<string>("-");
 	const [isLoading, setIsLoading] = useState(true);
@@ -48,7 +51,7 @@ function Auction() {
 	}, []);
 
 	async function handleImageClick(photo: AuctionPhoto) {
-		const amountInput = window.prompt(`入札額を入力してください（現在額: ${photo.Amount}）`);
+		const amountInput = window.prompt(`入札額を入力してください（現在額: ${photo.Amount ?? 0}）`);
 		if (amountInput == null) {
 			return;
 		}
@@ -66,6 +69,12 @@ function Auction() {
 
 		setIsSubmittingPhotoId(photo.PhotoID);
 		try {
+			const privateKey = sessionStorage.getItem("qrCodeData");
+			if (!privateKey) {
+				toast.error("秘密鍵が見つかりません。先にトーナメント画面でQRを読み込んでください");
+				return;
+			}
+
 			const res = await fetch("/Auction/Bid", {
 				method: "POST",
 				credentials: "include",
@@ -73,6 +82,7 @@ function Auction() {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
+					privateKey,
 					photoId: photo.PhotoID,
 					amount: bidAmount,
 				}),
@@ -102,7 +112,16 @@ function Auction() {
 	return (
 		<main className="auction-page">
 			<header className="auction-header">
+				<div className="auction-header-left">
 				<h1 className="auction-title">オークション</h1>
+				<ConfirmButton
+                    label="トーナメント"
+                    type="button"
+                    onClick={async () => {
+                        navigate("/Tournament");
+                    }}
+                />
+				</div>
 				<p className="auction-expire">終了時刻: {expireTime}</p>
 			</header>
 
@@ -126,8 +145,8 @@ function Auction() {
 									aria-disabled={isSubmittingPhotoId === photo.PhotoID}
 								/>
 								<div className="auction-meta">
-									<p>ユーザー名: {photo.UserID}</p>
-									<p>現在額: {photo.Amount}</p>
+									<p>現在額: {photo.Amount ?? 0} n</p>
+									<p>投票数: {photo.voteCount}</p>
 									{isSubmittingPhotoId === photo.PhotoID && <p>送信中...</p>}
 								</div>
 							</li>
