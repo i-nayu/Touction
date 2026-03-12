@@ -113,12 +113,11 @@ function Login() {
                 <h1>新規登録</h1>
             </div>
             <div className="login-tab">
-                <h1>新規登録</h1>
                 <ConfirmButton
                     label="秘密鍵を持っていない方はこちら"
                     type="button"
                     onClick={async () => {
-                        navigate("/Register");
+                        navigate("/");
                     }}
                 />
                 <ConfirmButton

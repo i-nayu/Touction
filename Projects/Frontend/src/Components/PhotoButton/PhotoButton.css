@@ -26,10 +26,11 @@ body,
     align-items: center;
 
     /*背景設定*/
-    background-color: white;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
 
     /*文字設定*/
-    color: #242B3C;
+    color: var(--text);
     font-weight: bold;
     font-size: 40px;
 
