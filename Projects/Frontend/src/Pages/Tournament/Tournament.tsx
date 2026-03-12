@@ -13,7 +13,8 @@ function Tournament() {
   const [photos, setPhotos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-  const [expireTime, setExpireTime] = useState<string | number>("読み込み中...");
+  const [expireTime, setExpireTime] = useState<string>("読み込み中...");
+  const [deadlineAt, setDeadlineAt] = useState<Date | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<any | null>(null);
   const [selectedQrFile, setSelectedQrFile] = useState<File | null>(null);
   const [selectedQrText, setSelectedQrText] = useState<string | null>(null);
@@ -28,16 +29,33 @@ function Tournament() {
     }
   }, []);
 
-  async function DeadlineTime(expireTime: Date) {
+  function formatDeadlineTime(expireTime: Date) {
     const now = new Date();
-    const LeftTime = expireTime.getTime() - now.getTime();
-    if (LeftTime <= 0) return "投票終了";
-    const totalSeconds = Math.floor(LeftTime / 1000);
+    const leftTime = expireTime.getTime() - now.getTime();
+    if (leftTime <= 0) return "投票終了";
+    const totalSeconds = Math.floor(leftTime / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     return `${hours}時間${minutes}分${seconds}秒`;
   }
+
+  useEffect(() => {
+    if (!deadlineAt) {
+      return;
+    }
+
+    const updateCountdown = () => {
+      setExpireTime(formatDeadlineTime(deadlineAt));
+    };
+
+    updateCountdown();
+    const intervalId = window.setInterval(updateCountdown, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [deadlineAt]);
 
   useEffect(() => {
     async function fetchTournamentData() {
@@ -57,9 +75,15 @@ function Tournament() {
         }
         const data = await res.json();
         if (data.expireTime) {
-          const expire = await DeadlineTime(new Date(data.expireTime));
-          setExpireTime(expire);
+          const parsedDeadline = new Date(data.expireTime);
+          if (Number.isNaN(parsedDeadline.getTime())) {
+            setDeadlineAt(null);
+            setExpireTime("-");
+          } else {
+            setDeadlineAt(parsedDeadline);
+          }
         } else {
+          setDeadlineAt(null);
           setExpireTime("-");
         }
         // データの正規化
