@@ -3,7 +3,7 @@
 	width: min(1120px, calc(100vw - 48px));
 	margin: 0 auto;
 	padding: 32px 0 48px;
-	color: #ffffff;
+	color: var(--text);
 }
 
 .tournament-status {
@@ -22,8 +22,8 @@
 }
 
 .status-card {
-	background: rgba(255, 255, 255, 0.08);
-	border: 1px solid rgba(255, 255, 255, 0.16);
+	background: var(--surface-muted);
+	border: 1px solid var(--border);
 	border-radius: 12px;
 	padding: 16px;
 }
@@ -55,16 +55,16 @@
 	margin: 0;
 	padding: 12px;
 	grid-column: 1 / -1;
-	background: rgba(255, 255, 255, 0.08);
-	border: 1px solid rgba(255, 255, 255, 0.14);
+	background: var(--surface-muted);
+	border: 1px solid var(--border);
 	border-radius: 10px;
 }
 
 .photo-card {
 	overflow: hidden;
 	border-radius: 12px;
-	background: rgba(255, 255, 255, 0.08);
-	border: 1px solid rgba(255, 255, 255, 0.14);
+	background: var(--surface-muted);
+	border: 1px solid var(--border);
 }
 
 .photo-image {
@@ -93,11 +93,11 @@
 
 .qr-modal {
 	width: min(520px, 100%);
-	background: #242b3c;
+	background: var(--surface);
 	border-radius: 12px;
-	border: 1px solid rgba(255, 255, 255, 0.14);
+	border: 1px solid var(--border);
 	padding: 20px;
-	color: #ffffff;
+	color: var(--text);
 }
 
 .qr-modal-title {
@@ -123,7 +123,7 @@
 
 .qr-file-input {
 	width: 100%;
-	color: #ffffff;
+	color: var(--text);
 }
 
 .qr-file-name {
