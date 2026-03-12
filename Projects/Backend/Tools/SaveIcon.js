@@ -19,13 +19,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ===アイコン保存処理===
-function SaveIcon(file, folder) {
-    //不正な引数防止
-    if (!/^[a-zA-Z0-9_-]+$/.test(folder)) { 
-        throw new Error("Invalid folder name");
-    }
+function SaveIcon(file){
     const fileName = CreateFileName(file.originalname);
-    const dir = path.join(__dirname, "..", "icons", folder);
+    const dir = path.join(__dirname, "..", "icons");
 
     // フォルダが存在しない場合は作成
     fs.mkdirSync(dir, { recursive: true });
@@ -37,7 +33,7 @@ function SaveIcon(file, folder) {
     console.log(`Icon saved to ${fullPath}`);
 
     // DBに入れる用の「相対パス」
-    return `/icons/${folder}/${fileName}`;
+    return `/icons/${fileName}`;
 }
 
 export default SaveIcon;
