@@ -81,6 +81,13 @@ router.post('/PhotoList', async (req, res) => {
     const serverAddress = GetAddress("testnet", tournamentPrivateKeyText);
 
     try {
+        let address;
+        const textPrivateKey = req.body.qrFromSession;
+            if (!textPrivateKey) {
+                console.log("Missing required fields in Upload request");
+                return res.status(400).json({ message: "privateKey are required" });
+            }
+            address = GetAddress("testnet", textPrivateKey);
         /*トーナメント作成*/
         const createResults = await DBPerf(
             "Get Active Tournament",
@@ -88,19 +95,17 @@ router.post('/PhotoList', async (req, res) => {
             []
         );
         if (!createResults || createResults.length === 0) {
+            await DBPerf(
+                "Update vote",
+                "UPDATE Vote SET Vote = false AND Give = false WHERE Address = ?",
+                [address]
+            );
             console.log("[Tournament] No Mosaic Found. Create Tournament.");
             await CreateTournament();
         }
 
         //現在のトークン数を取得
-        let address;
         try {
-            const textPrivateKey = req.body.qrFromSession;
-            if (!textPrivateKey) {
-                console.log("Missing required fields in Upload request");
-                return res.status(400).json({ message: "privateKey are required" });
-            }
-            address = GetAddress("testnet", textPrivateKey);
 
             const voteResult = await DBPerf(
                 "Get Vote",

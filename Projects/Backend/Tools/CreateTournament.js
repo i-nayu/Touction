@@ -40,12 +40,6 @@ async function CreateTournament() {
             deadlineHours: 24
         });
 
-        // ユーザー数取得
-        const result = await DBPerf(
-            "Count Users",
-            "SELECT COUNT(*) as count FROM Identify"
-        );
-
 
         //供給変更トランザクションを作成
         console.log("[Create tournament] Creating Supply Change Transaction...");
