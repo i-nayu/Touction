@@ -67,43 +67,52 @@ function Register() {
     }
   }
 
-// DataURL形式のQRコードから文字列を取得する関数
-async function decodeQRCodeFromDataURL(dataURL: string): Promise<string | null> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = image.width;
-      canvas.height = image.height;
+  // DataURL形式のQRコードから文字列を取得する関数
+  async function decodeQRCodeFromDataURL(dataURL: string): Promise<string | null> {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
 
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Canvasの2Dコンテキストが取得できません"));
-        return;
-      }
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvasの2Dコンテキストが取得できません"));
+          return;
+        }
 
-      ctx.drawImage(image, 0, 0);
+        ctx.drawImage(image, 0, 0);
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height);
-      resolve(code?.data || null);
-    };
-    image.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
-    image.src = dataURL;
-  });
-}
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        resolve(code?.data || null);
+      };
+      image.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
+      image.src = dataURL;
+    });
+  }
 
   return (
     <div className="register-page">
       <div className="register-tab">
         <h1>新規登録</h1>
-         <ConfirmButton 
-                label="秘密鍵を持っている方はこちら" 
-                type="button" 
-                onClick={async () => {
-                    navigate("/Login");
-                }}
-              />
+      </div>
+      <div className="register-tab">
+        <ConfirmButton
+          label="秘密鍵を持っている方はこちら"
+          type="button"
+          onClick={async () => {
+            navigate("/Login");
+          }}
+        />
+        <ConfirmButton
+          label="QRコードをダウンロード済みの方はこちら"
+          type="button"
+          onClick={async () => {
+            navigate("/Tournament");
+          }}
+        />
       </div>
 
       {/* エラーメッセージや成功メッセージの表示領域があると親切です */}
@@ -118,57 +127,57 @@ async function decodeQRCodeFromDataURL(dataURL: string): Promise<string | null> 
             </div>
           </div>
         )}
-          
-          {qrCode && (
-            <div className="qr-code-area">
-              <p>生成された秘密鍵QRコードを保存してください</p>
-              {registeredAddress && (
-                <>
-                  <p>発行されたAddress: {registeredAddress}</p>
-                  <ConfirmButton
-                    label="Addressをコピー"
-                    type="button"
-                    onClick={() => handleCopyAddress(registeredAddress)}
-                  />
-                  <p>
-                    手数料用のXYMを受け取るため、以下のfaucetからこのAddressへ送金してください。
-                  </p>
-                  <a
-                    className="qr-download-link"
-                    href="https://testnet.symbol.tools"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Faucetを開く（https://testnet.symbol.tools）
-                  </a>
-                </>
-              )}
-              <img className="qr-code-image" src={qrCode} alt="秘密鍵QRコード" />
-              <a 
-                className="qr-download-link" 
-                href={qrCode} 
-                download={`${registeredAddress || "user"}-private-key-qr.png`}
-              >
-                QRコードをダウンロード
-              </a>
-              <ConfirmButton 
-                label="ホームへ" 
-                type="button" 
-                onClick={async () => {
-                  try {
-                    const result = await decodeQRCodeFromDataURL(qrCode);
-                    if (result) {
-                      // sessionStorageに保存
-                      sessionStorage.setItem("qrCodeData", result);
-                    }
-                    navigate("/tournament");
-                  } catch (err) {
-                    console.error(err);
+
+        {qrCode && (
+          <div className="qr-code-area">
+            <p>生成された秘密鍵QRコードを保存してください</p>
+            {registeredAddress && (
+              <>
+                <p>発行されたAddress: {registeredAddress}</p>
+                <ConfirmButton
+                  label="Addressをコピー"
+                  type="button"
+                  onClick={() => handleCopyAddress(registeredAddress)}
+                />
+                <p>
+                  手数料用のXYMを受け取るため、以下のfaucetからこのAddressへ送金してください。
+                </p>
+                <a
+                  className="qr-download-link"
+                  href="https://testnet.symbol.tools"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Faucetを開く（https://testnet.symbol.tools）
+                </a>
+              </>
+            )}
+            <img className="qr-code-image" src={qrCode} alt="秘密鍵QRコード" />
+            <a
+              className="qr-download-link"
+              href={qrCode}
+              download={`${registeredAddress || "user"}-private-key-qr.png`}
+            >
+              QRコードをダウンロード
+            </a>
+            <ConfirmButton
+              label="ホームへ"
+              type="button"
+              onClick={async () => {
+                try {
+                  const result = await decodeQRCodeFromDataURL(qrCode);
+                  if (result) {
+                    // sessionStorageに保存
+                    sessionStorage.setItem("qrCodeData", result);
                   }
-                }}
-              />
-            </div>
-          )}
+                  navigate("/tournament");
+                } catch (err) {
+                  console.error(err);
+                }
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
