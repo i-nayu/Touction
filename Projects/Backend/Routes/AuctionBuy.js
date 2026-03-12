@@ -62,25 +62,23 @@ router.post('/AuctionBuy', async (req, res) => {
             }
 
             const buyAddress = GetAddress("testnet", privateKey); //入札者のアドレス
-            const buyResult = await DBPerf("Get BidUserID",
-                "SELECT UserID FROM Identify WHERE Address = ?",
+            const buyResult = await DBPerf("Get Buyer Address",
+                "SELECT Address FROM Identify WHERE Address = ?",
                 [buyAddress]
             );
             if (!buyResult.length) {
                 return res.status(404).json({ message: "ユーザーが存在しません" });
             }
-            const buyUserId = buyResult[0].UserID;
 
 
             //購入できるものを探す
             const userData = await DBPerf("Search amount",
-                `SELECT p.PhotoID, p.PhotoPath, p.Amount, i.Address, p.MosaicID
+                `SELECT p.PhotoID, p.PhotoPath, p.Amount, p.Address, p.MosaicID
                 FROM Photos p
-                JOIN Identify i ON p.UserID = i.UserID
                 WHERE p.BidUserID = ? 
                 AND p.Purchased = false
                 AND p.MosaicID IS NOT NULL`,
-                [buyUserId]
+                [buyAddress]
             );
             if (!userData.length) {
                 console.log("[AuctionBuy] Not Found: photos");
@@ -136,8 +134,8 @@ router.post('/AuctionBuy', async (req, res) => {
             for (const photo of userData) {
                 await DBPerf(
                     "Insert Into Bought",
-                    "INSERT INTO Bought (PhotoID, UserID, PhotoPath, BoughtAmount) VALUES (?, ?, ?, ?)",
-                    [photo.PhotoID, buyUserId, photo.PhotoPath, photo.Amount]
+                    "INSERT INTO Bought (PhotoID, Address, PhotoPath, BoughtAmount) VALUES (?, ?, ?, ?)",
+                    [photo.PhotoID, buyAddress, photo.PhotoPath, photo.Amount]
                 );
 
                 // PhotosテーブルのPurchasedフラグをtrueに更新

@@ -31,7 +31,26 @@ router.use(express.json());
 // cookieを使う
 router.use(cookieParser());
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
-const upload = multer({ storage: multer.memoryStorage() });
+const MAX_UPLOAD_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_UPLOAD_PHOTO_SIZE_BYTES },
+});
+
+const uploadPhotoMiddleware = (req, res, next) => {
+    upload.single('photo')(req, res, (err) => {
+        if (!err) {
+            return next();
+        }
+
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ message: "写真サイズが上限を超えています（上限: 5MB）" });
+        }
+
+        console.error("[Upload] Multer Error:", err);
+        return res.status(400).json({ message: "写真アップロードに失敗しました" });
+    });
+};
 let isGiveVoteProcessing = false;
 
 // =====================================================================
@@ -85,7 +104,7 @@ router.post('/PhotoList', async (req, res) => {
 
             const voteResult = await DBPerf(
                 "Get Vote",
-                "SELECT Vote, Give FROM Vote V JOIN Identify I ON V.UserID = I.UserID WHERE I.Address = ?; ",
+                "SELECT Vote, Give FROM Vote WHERE Address = ?; ",
                 [address]
             );
             const vote = voteResult[0].Vote; //投票したかどうか
@@ -189,7 +208,7 @@ router.post('/PhotoList', async (req, res) => {
 
                     const result = await DBPerf(
                         "Update Give",
-                        "UPDATE Vote V JOIN Identify I ON V.UserID = I.UserID SET Give = true WHERE I.Address = ? AND Give = false",
+                        "UPDATE Vote SET Give = true WHERE Address = ? AND Give = false",
                         [address]
                     );
                     if (result.affectedRows === 0) {
@@ -241,7 +260,7 @@ router.post('/PhotoList', async (req, res) => {
         // 残り投票数（userVoteが1以上なら1、0なら0）
         const votesResult = await DBPerf(
             "Get Vote Left",
-            `SELECT (NOT Vote) + 0 AS VoteNumber FROM Vote V JOIN Identify I ON V.UserID = I.UserID WHERE I.Address = ?`,
+            `SELECT (NOT Vote) + 0 AS VoteNumber FROM Vote WHERE Address = ?`,
             [address]
         );
         const votesLeft = votesResult[0]?.VoteNumber ?? 0;
@@ -262,7 +281,7 @@ router.post('/PhotoList', async (req, res) => {
 // =====================================================================
 // 写真追加API
 // =====================================================================
-router.post('/Upload', upload.single('photo'), async (req, res) => {
+router.post('/Upload', uploadPhotoMiddleware, async (req, res) => {
     console.log("Tournament-/Upload-API is running");
 
     try {
@@ -279,14 +298,30 @@ router.post('/Upload', upload.single('photo'), async (req, res) => {
         }
 
         const address = GetAddress("testnet", privateKey);
+
+        //すでに写真を投稿していないかチェック
+        const mosaicIdResult = await DBPerf(
+            "Get Active MosaicId",
+            "SELECT MosaicID FROM Mosaic WHERE CreateTime <= NOW() AND ExpireTime >= NOW() ORDER BY CreateTime DESC LIMIT 1",
+            []
+        );
+        const mosaicIdPhoto = mosaicIdResult[0].MosaicID;
+        const photoResult = await DBPerf("Get Photos",
+            `SELECT PhotoID FROM Photos WHERE Address = ? AND MosaicID = ?`,
+            [address, mosaicIdPhoto]
+        );
+        if (photoResult.length > 0) {
+            console.log("[Upload] User has already uploaded a photo");
+            return res.status(400).json({ message: "このアドレスは既に写真を投稿しています" });
+        }
+
         const userResult = await DBPerf("Get BidUserID",
-            "SELECT UserID FROM Identify WHERE Address = ?",
+            "SELECT Address FROM Identify WHERE Address = ?",
             [address]
         );
         if (!userResult.length) {
             return res.status(404).json({ message: "ユーザーが存在しません" });
         }
-        const userId = userResult[0].UserID;
         const PhotoPath = SaveIcon(req.file, "photographs");
         console.log("Photo saved at:", PhotoPath);
 
@@ -299,9 +334,9 @@ router.post('/Upload', upload.single('photo'), async (req, res) => {
         //写真投稿をDBに保存
         const result = await DBPerf(
             "INSERT Photos",
-            `INSERT INTO Photos(UserID, PhotoPath, Comment, MosaicID)
+            `INSERT INTO Photos(Address, PhotoPath, Comment, MosaicID)
             VALUES (?, ?, ?, ?)`,
-            [userId, PhotoPath, comment, mosaicIdHex]
+            [address, PhotoPath, comment, mosaicIdHex]
         );
 
         res.status(201).json({
@@ -338,7 +373,7 @@ router.post('/Vote', async (req, res) => {
         //投票先のaddressを取得
         const Address = await DBPerf(
             "Get address",
-            "SELECT I.Address FROM Photos P JOIN Identify I ON P.UserID = I.UserID WHERE P.PhotoID = ?; ",
+            "SELECT Address FROM Photos WHERE PhotoID = ?; ",
             [photoId]
         );
         if (!Address.length) {
@@ -350,7 +385,7 @@ router.post('/Vote', async (req, res) => {
         //投票者の情報を取得
         const users = await DBPerf(
             "Get users",
-            "SELECT I.UserID, v.Vote FROM Vote v JOIN Identify I ON v.UserID = I.UserID WHERE I.Address = ?; ",
+            "SELECT Address, Vote FROM Vote WHERE Address = ?; ",
             [userAddress]
         );
 
@@ -386,7 +421,8 @@ router.post('/Vote', async (req, res) => {
 
         } catch (txErr) {
             console.error("[Vote] Vote Get Error:", txErr);
-            return res.status(500).json({ message: "Internal TX Error: トランザクションエラーが発生しました。" });
+            const message = txErr instanceof Error ? txErr.message : "Internal TX Error: トランザクションエラーが発生しました。";
+            return res.status(500).json({ message });
         }
 
         //投票（トークン送信）トランザクションを作成
@@ -432,27 +468,28 @@ router.post('/Vote', async (req, res) => {
             console.log("[Vote] Vote To Server TX Hash:", voteResult.hash);
             console.log("[Vote] Vote To Server TX Announced Successfully!");
 
-            const userId = users[0].UserID;
             await DBPerf(
                 "Update vote",
-                "UPDATE Vote SET Vote = true WHERE UserID = ?",
-                [userId]
+                "UPDATE Vote SET Vote = true WHERE Address = ?",
+                [userAddress]
             );
 
             res.json({
-                message: "Vote To Server successful",
+                message: "投票しました",
                 txHash: voteResult.hash
             });
         } catch (txErr) {
             console.error("[Vote] Vote To Server TX Error:", txErr);
-            return res.status(500).json({ message: "Internal TX Error: トランザクションエラーが発生しました。" });
+            const message = txErr instanceof Error ? txErr.message : "Internal TX Error: トランザクションエラーが発生しました。";
+            return res.status(500).json({ message });
         }
 
 
 
     } catch (txErr) {
         console.error("[Vote] Vote TX Error:", txErr);
-        return res.status(500).json({ message: "Internal Server Error: サーバーエラーが発生しました。" });
+        const message = txErr instanceof Error ? txErr.message : "Internal Server Error: サーバーエラーが発生しました。";
+        return res.status(500).json({ message });
     }
 });
 

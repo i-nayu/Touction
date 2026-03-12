@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 
 type AuctionPhoto = {
 	PhotoID: number;
-	UserID: number;
+	Address: string;
 	PhotoPath: string;
 	Amount: number;
 	voteCount: number;
@@ -48,7 +48,7 @@ function Auction() {
 	}, []);
 
 	async function handleImageClick(photo: AuctionPhoto) {
-		const amountInput = window.prompt(`入札額を入力してください（現在額: ${photo.Amount}）`);
+		const amountInput = window.prompt(`入札額を入力してください（現在額: ${photo.Amount ?? 0}）`);
 		if (amountInput == null) {
 			return;
 		}
@@ -133,8 +133,7 @@ function Auction() {
 									aria-disabled={isSubmittingPhotoId === photo.PhotoID}
 								/>
 								<div className="auction-meta">
-									<p>ユーザー名: {photo.UserID}</p>
-									<p>現在額: {photo.Amount}</p>
+									<p>現在額: {photo.Amount ?? 0} n</p>
 									<p>投票数: {photo.voteCount}</p>
 									{isSubmittingPhotoId === photo.PhotoID && <p>送信中...</p>}
 								</div>

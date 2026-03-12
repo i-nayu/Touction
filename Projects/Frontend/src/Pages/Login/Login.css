@@ -3,17 +3,14 @@
   width: min(1120px, calc(100vw - 48px));
   margin: 0 auto;
   padding: 32px 0 48px;
-  color: var(--text);
+  color: #ffffff;
 }
 
-.register-tab {
-  display: flex;
-  flex-direction: row;
+.login-tab {
   margin-bottom: 28px;
-  gap: 5px;
 }
 
-.register-tab h1 {
+.login-tab h1 {
   font-size: 30px;
   font-weight: 600;
   margin: 0;
@@ -26,8 +23,8 @@
 .register-container {
   width: 100%;
   max-width: 720px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 12px;
   padding: 24px;
 }
@@ -58,11 +55,11 @@
 }
 
 .register-error {
-  color: #b42318;
+  color: #ffb3b3;
 }
 
 .register-success {
-  color: #1f7a36;
+  color: #b9ffbc;
 }
 
 .qr-code-area {
@@ -90,14 +87,14 @@
   width: fit-content;
   padding: 10px 14px;
   border-radius: 8px;
-  color: var(--text);
+  color: #ffffff;
   text-decoration: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 .qr-download-link:hover {
-  background: var(--surface-muted);
+  background: rgba(255, 255, 255, 0.28);
 }
 
 @media (max-width: 900px) {
@@ -112,7 +109,7 @@
     padding-top: 20px;
   }
 
-  .register-tab h1{
+  .register-tab h1 {
     font-size: 24px;
   }
 

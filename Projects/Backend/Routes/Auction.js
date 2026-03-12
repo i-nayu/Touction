@@ -60,7 +60,7 @@ router.get('/Auction', async (req, res) => {
         // すでに取得している mosaicIdHex を利用
         let photos = await DBPerf(
             "Get Photo List",
-            `SELECT PhotoID, PhotoPath, Comment 
+            `SELECT PhotoID, Address, PhotoPath, Comment, Amount 
             FROM Photos 
             WHERE MosaicID = ?`,
             [tournamentMosaicId]
@@ -68,12 +68,7 @@ router.get('/Auction', async (req, res) => {
 
         const photosList = await Promise.all(
             photos.map(async (photo) => {
-                const addressResult = await DBPerf(
-                    "Get user address",
-                    "SELECT Address FROM Identify WHERE UserID = ?",
-                    [photo.UserID]
-                );
-                const userAddress = addressResult[0]?.Address || null;
+                const userAddress = photo.Address || null;
 
 
                 const voteCountBigInt = (userAddress && tournamentMosaicId)
@@ -119,14 +114,13 @@ router.post('/Bid', async (req, res) => {
         }
 
         const bidAddress = GetAddress("testnet", privateKey); //入札者のアドレス
-        const bidResult = await DBPerf("Get BidUserID",
-            "SELECT UserID FROM Identify WHERE Address = ?",
+        const bidResult = await DBPerf("Get Bid Address",
+            "SELECT Address FROM Identify WHERE Address = ?",
             [bidAddress]
         );
         if (!bidResult.length) {
             return res.status(404).json({ message: "ユーザーが存在しません" });
         }
-        const bidUserId = bidResult[0].UserID;
 
         const bidAmount = parseInt(amount, 10);
         if (isNaN(bidAmount) || bidAmount <= 0) {
@@ -138,7 +132,7 @@ router.post('/Bid', async (req, res) => {
         const result = await DBPerf(
             "Update amount",
             "UPDATE Photos SET BidUserId = ?, Amount = ? WHERE PhotoID = ? AND (Amount IS NULL OR Amount < ?)",
-            [bidUserId, bidAmount, photoId, bidAmount]
+            [bidAddress, bidAmount, photoId, bidAmount]
         );
 
         if (result.affectedRows === 0) {

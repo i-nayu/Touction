@@ -1,16 +1,11 @@
 import express from 'express';
 import path from 'path';
-import cookieParser from 'cookie-parser';   // Cookie解析
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
-import QRCode from 'qrcode'; //QRコード生成
-
-// symbol-sdk v3
-import { SymbolFacade } from 'symbol-sdk/symbol';
-import { PrivateKey } from 'symbol-sdk';
 
 //関数読み込み
 import DBPerf from '../Tools/DBPerf.js';
+import GetAddress from '../Tools/GetAddress.js';
 
 // ==========================
 // 環境変数の読み込み
@@ -22,8 +17,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const router = express.Router();
 
-// Cookieをreq.cookiesで扱えるようにする
-router.use(cookieParser());
 
 // JSONボディを解析可能にする
 router.use(express.json());
@@ -32,7 +25,7 @@ router.use(express.json());
 // 画面表示API
 // =====================================================================
 router.get('/', (req, res) => {
-    console.log("/Register-API is running");
+    console.log("/Login-API is running");
 
     // フロントエンドのビルド済みHTMLを返す
     res.sendFile(
@@ -47,17 +40,16 @@ router.get('/', (req, res) => {
 router.post('/Submit', async (req, res) => {
     console.log("Submit-API is running");
     try {
+        //フロントからの入力値を取得
+        const { privateKey } = req.body;
 
-        // Symbolブロックチェーン用アカウント生成
-        const facade = new SymbolFacade('testnet');
+        //必須項目チェック
+        if (!privateKey) {
+            return res.status(400).json({ message: "Bad Request: privateKey が不足しています" })
+        }
 
-        const privateKey = PrivateKey.random();
-        const account = facade.createAccount(privateKey);
-        const address = account.address.toString();
-        const privateKeyString = privateKey.toString();
+        const address = GetAddress("testnet", privateKey);
 
-        console.log("アドレス:", address);
-        console.log("秘密鍵:", privateKeyString);
 
 
         // DB保存
@@ -73,27 +65,11 @@ router.post('/Submit', async (req, res) => {
             [address]
         );
 
-        // 秘密鍵をQRコード化
-        let qr;
-
-        try {
-
-            //QRコード生成 エラー訂正レベル: H(L, M, Q, Hの４段階)
-            qr = await QRCode.toDataURL(privateKeyString, {errorCorrectionLevel: 'H'});
-
-        } catch (qrError) {
-            console.error("QRコード生成エラー:", qrError);
-
-            return res.status(500).json({
-                message: "QRコードの生成に失敗しました"
-            });
-        }
-
 
         // 登録成功
         res.status(200).json({
-            qrCode: qr,
-            address
+            address,
+            message: "登録成功！"
         });
 
     } catch (err) {

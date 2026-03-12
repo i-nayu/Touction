@@ -7,9 +7,10 @@ import toast from "react-hot-toast";
 
 type BoughtPhoto = {
   PhotoID: number;
-  UserID: number;
+  Address: string;
   PhotoPath: string;
-  Amount: number;
+  Amount?: number;
+  BoughtAmount?: number;
 };
 
 type AuctionBuyResponse = {
@@ -190,8 +191,7 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
                 />
                 <div className="auction-buy-meta">
                   <p>PhotoID: {photo.PhotoID}</p>
-                  <p>UserID: {photo.UserID}</p>
-                  <p>購入額: {photo.Amount}</p>
+                  <p>購入額: {photo.BoughtAmount ?? photo.Amount}</p>
                   <p>{message}</p>
                 </div>
               </li>
