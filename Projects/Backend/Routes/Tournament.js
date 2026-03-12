@@ -51,6 +51,56 @@ const uploadPhotoMiddleware = (req, res, next) => {
         return res.status(400).json({ message: "写真アップロードに失敗しました" });
     });
 };
+
+function getErrorMessage(error) {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+    if (typeof error === 'string') {
+        return error;
+    }
+    return 'トランザクションエラーが発生しました。';
+}
+
+function classifyTxError(error) {
+    const rawMessage = getErrorMessage(error);
+    const normalized = rawMessage.toLowerCase();
+
+    const isAccountNotReady =
+        normalized.includes('resource_not_found') ||
+        normalized.includes('account not found') ||
+        normalized.includes('address not found') ||
+        normalized.includes('unknown account') ||
+        normalized.includes('unrecognized account') ||
+        normalized.includes('state cache');
+
+    if (isAccountNotReady) {
+        return {
+            status: 409,
+            message: 'アカウント情報の反映待ちです。ページをリロードして再試行してください。'
+        };
+    }
+
+    if (normalized.includes('insufficient_balance')) {
+        return {
+            status: 400,
+            message: '手数料用XYMが不足しています。テストネットXYMを受け取って再試行してください。'
+        };
+    }
+
+    if (normalized.includes('timeout')) {
+        return {
+            status: 504,
+            message: 'トランザクション確認がタイムアウトしました。ページをリロードして状態を確認してください。'
+        };
+    }
+
+    return {
+        status: 500,
+        message: `トランザクションエラー: ${rawMessage}`
+    };
+}
+
 let isGiveVoteProcessing = false;
 
 // =====================================================================
@@ -228,7 +278,8 @@ router.post('/PhotoList', async (req, res) => {
 
         } catch (txErr) {
             console.error("[Give Vote] Error:", txErr);
-            return res.status(500).json({ message: "Internal TX Error: トランザクションエラーが発生しました。" });
+            const txError = classifyTxError(txErr);
+            return res.status(txError.status).json({ message: txError.message });
         }
 
         // バックエンドで定義するテーマと終了日時
@@ -426,8 +477,8 @@ router.post('/Vote', async (req, res) => {
 
         } catch (txErr) {
             console.error("[Vote] Vote Get Error:", txErr);
-            const message = txErr instanceof Error ? txErr.message : "Internal TX Error: トランザクションエラーが発生しました。";
-            return res.status(500).json({ message });
+            const txError = classifyTxError(txErr);
+            return res.status(txError.status).json({ message: txError.message });
         }
 
         //投票（トークン送信）トランザクションを作成
@@ -485,16 +536,16 @@ router.post('/Vote', async (req, res) => {
             });
         } catch (txErr) {
             console.error("[Vote] Vote To Server TX Error:", txErr);
-            const message = txErr instanceof Error ? txErr.message : "Internal TX Error: トランザクションエラーが発生しました。";
-            return res.status(500).json({ message });
+            const txError = classifyTxError(txErr);
+            return res.status(txError.status).json({ message: txError.message });
         }
 
 
 
     } catch (txErr) {
         console.error("[Vote] Vote TX Error:", txErr);
-        const message = txErr instanceof Error ? txErr.message : "Internal Server Error: サーバーエラーが発生しました。";
-        return res.status(500).json({ message });
+        const txError = classifyTxError(txErr);
+        return res.status(txError.status).json({ message: txError.message });
     }
 });
 

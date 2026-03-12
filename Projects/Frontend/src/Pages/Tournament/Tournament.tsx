@@ -20,6 +20,18 @@ function Tournament() {
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const [voteStatusMessage, setVoteStatusMessage] = useState<string>("");
 
+  function appendReloadSuggestionIfNeeded(message: string) {
+    const isAccountRecognitionError =
+      message.includes("トランザクションエラー") ||
+      (message.includes("404"));
+
+    if (!isAccountRecognitionError) {
+      return message;
+    }
+
+    return `アカウント作成直後はネットワークへの反映待ちの場合があります。ページをリロードして再試行してください。`;
+  }
+
   // QR秘密鍵を sessionStorage から取得
   useEffect(() => {
     const qrFromSession = sessionStorage.getItem("qrCodeData");
@@ -52,7 +64,11 @@ function Tournament() {
           }),
         });
         if (!res.ok) {
-          toast.error("トーナメントデータの取得に失敗しました");
+          const data = await res.json().catch(() => null);
+          const backendMessage = data?.message ?? "トーナメントデータの取得に失敗しました";
+          const displayMessage = appendReloadSuggestionIfNeeded(backendMessage);
+          setVoteStatusMessage(displayMessage);
+          toast.error(displayMessage);
           return;
         }
         const data = await res.json();
@@ -91,38 +107,38 @@ function Tournament() {
     setSelectedQrFile(null);
   }
 
-// File（QR画像）から文字列を取得する関数
-async function decodeQRCodeFromFile(file: File): Promise<string | null> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const image = new Image();
-      image.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = image.width;
-        canvas.height = image.height;
+  // File（QR画像）から文字列を取得する関数
+  async function decodeQRCodeFromFile(file: File): Promise<string | null> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const image = new Image();
+        image.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = image.width;
+          canvas.height = image.height;
 
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Canvasの2Dコンテキストが取得できません"));
-          return;
-        }
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Canvasの2Dコンテキストが取得できません"));
+            return;
+          }
 
-        ctx.drawImage(image, 0, 0);
+          ctx.drawImage(image, 0, 0);
 
-        // jsQRでQRコードを解析
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
+          // jsQRでQRコードを解析
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-        resolve(code?.data || null);
+          resolve(code?.data || null);
+        };
+        image.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
+        image.src = reader.result as string;
       };
-      image.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
-      image.src = reader.result as string;
-    };
-    reader.onerror = () => reject(new Error("ファイルの読み込みに失敗しました"));
-    reader.readAsDataURL(file); // File を DataURL に変換
-  });
-}
+      reader.onerror = () => reject(new Error("ファイルの読み込みに失敗しました"));
+      reader.readAsDataURL(file); // File を DataURL に変換
+    });
+  }
 
   async function handleQrUpload(photo?: any) {
     const targetPhoto = photo ?? selectedPhoto;
@@ -158,10 +174,11 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
 
       const data = await res.json().catch(() => null);
       const backendMessage = data?.message ?? "サーバーエラーが発生しました";
+      const displayMessage = appendReloadSuggestionIfNeeded(backendMessage);
 
       if (!res.ok) {
-        setVoteStatusMessage(`投票失敗: ${backendMessage}`);
-        toast.error(backendMessage);
+        setVoteStatusMessage(`投票失敗: ${displayMessage}`);
+        toast.error(displayMessage);
         return;
       }
 
@@ -190,9 +207,13 @@ async function decodeQRCodeFromFile(file: File): Promise<string | null> {
       <header className="tournament-tab">
         <h1 className="tournament-title">トーナメント投票</h1>
         <h1 className="tournament-title">テーマ：知床</h1>
-        <ConfirmButton label="オークション" type="button" onClick={() => navigate("/auction")} />
-        <ConfirmButton label="購入一覧" type="button" onClick={() => navigate("/auction-buy")} />
-        <ConfirmButton label="アップロード" type="button" onClick={() => navigate("/upload-photo")} />
+        {!isLoading &&
+          <div className="tournament-buttons">
+            <ConfirmButton label="オークション" type="button" onClick={() => navigate("/auction")} />
+            <ConfirmButton label="購入一覧" type="button" onClick={() => navigate("/auction-buy")} />
+            <ConfirmButton label="アップロード" type="button" onClick={() => navigate("/upload-photo")} />
+          </div>
+        }
       </header>
 
       <section className="status-row">
