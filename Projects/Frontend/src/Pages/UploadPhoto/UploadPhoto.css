@@ -3,7 +3,7 @@
 	width: min(920px, calc(100vw - 48px));
 	margin: 0 auto;
 	padding: 32px 0 48px;
-	color: #ffffff;
+	color: var(--text);
 }
 
 .upload-photo-header {
@@ -25,8 +25,8 @@
 }
 
 .upload-photo-card {
-	background: rgba(255, 255, 255, 0.08);
-	border: 1px solid rgba(255, 255, 255, 0.16);
+	background: var(--surface-muted);
+	border: 1px solid var(--border);
 	border-radius: 12px;
 	padding: 18px;
 }
@@ -63,14 +63,14 @@
 	min-height: 84px;
 	resize: vertical;
 	border-radius: 10px;
-	border: 1px solid rgba(255, 255, 255, 0.25);
-	background: rgba(11, 17, 31, 0.45);
-	color: #ffffff;
+	border: 1px solid var(--input-border);
+	background: var(--input-bg);
+	color: var(--text);
 	padding: 10px 12px;
 }
 
 .upload-photo-textarea::placeholder {
-	color: rgba(255, 255, 255, 0.6);
+	color: var(--text-soft);
 }
 
 .upload-photo-submit {
