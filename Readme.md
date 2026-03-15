@@ -52,13 +52,13 @@ Touctionは、Symbolテストネットを使った写真トーナメント + オ
 
 ### 実行動画
 トーナメントの作成と投票権の配布や写真のアップロードをしている動画です
-https://drive.google.com/file/d/1Jgt8HagkQ5dGe17iEMo-Ln4_aTBhIcpk/view?usp=sharing
+- https://drive.google.com/file/d/1Jgt8HagkQ5dGe17iEMo-Ln4_aTBhIcpk/view?usp=sharing
 
 写真の投票を行っている動画です
-https://drive.google.com/file/d/1zJnoCEX-rp8KRFqW9-6fL1jTbH3u8x9a/view?usp=sharing
+- https://drive.google.com/file/d/1zJnoCEX-rp8KRFqW9-6fL1jTbH3u8x9a/view?usp=sharing
 
 写真の入札を実行している動画です
-https://drive.google.com/file/d/1c_6gwKSTlpdl42eHa-zP0Om8-bAGPF1s/view?usp=sharing
+- https://drive.google.com/file/d/1c_6gwKSTlpdl42eHa-zP0Om8-bAGPF1s/view?usp=sharing
 
 ## ブロックチェーンをどのように使用しているか
 
