@@ -50,7 +50,7 @@ Touctionは、Symbolテストネットを使った写真トーナメント + オ
 - 購入画面で購入実行します。
 - XYM送金が成功すると、購入済み情報がDBに反映されます。
 
-###実行動画
+### 実行動画
 トーナメントの作成と投票権の配布や写真のアップロードをしている動画です
 https://drive.google.com/file/d/1Jgt8HagkQ5dGe17iEMo-Ln4_aTBhIcpk/view?usp=sharing
 
