@@ -60,6 +60,9 @@ Touctionは、Symbolテストネットを使った写真トーナメント + オ
 写真の入札を実行している動画です
 - https://drive.google.com/file/d/1c_6gwKSTlpdl42eHa-zP0Om8-bAGPF1s/view?usp=sharing
 
+写真の購入を実行している動画です
+- https://drive.google.com/file/d/1Ec4Xadij6pD5XXNUfI3GgsqrTCt6YkRy/view?usp=sharing
+
 ## ブロックチェーンをどのように使用しているか
 
 1. アカウント生成（登録時）
