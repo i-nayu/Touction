@@ -1,5 +1,5 @@
 import "./Tournament.css";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import PhotoButton from "../../Components/PhotoButton/PhotoButton";
@@ -20,6 +20,7 @@ function Tournament() {
   const [selectedQrText, setSelectedQrText] = useState<string | null>(null);
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const [voteStatusMessage, setVoteStatusMessage] = useState<string>("");
+  const isSubmittingVoteRef = useRef(false);
 
   function appendReloadSuggestionIfNeeded(message: string) {
     const isAccountRecognitionError =
@@ -165,6 +166,10 @@ function Tournament() {
   }
 
   async function handleQrUpload(photo?: any) {
+    if (isSubmittingVoteRef.current || isUploadingQr) {
+      return;
+    }
+
     const targetPhoto = photo ?? selectedPhoto;
 
     if (!targetPhoto) {
@@ -182,6 +187,7 @@ function Tournament() {
       return;
     }
 
+    isSubmittingVoteRef.current = true;
     setIsUploadingQr(true);
     setVoteStatusMessage("投票中...");
     try {
@@ -223,6 +229,7 @@ function Tournament() {
       toast.error(message);
     } finally {
       setIsUploadingQr(false);
+      isSubmittingVoteRef.current = false;
     }
   }
 
@@ -230,7 +237,7 @@ function Tournament() {
     <main className="tournament-page">
       <header className="tournament-tab">
         <h1 className="tournament-title">トーナメント投票</h1>
-        <h1 className="tournament-title">テーマ：知床</h1>
+        <h1 className="tournament-title">テーマ：観光</h1>
         {!isLoading &&
           <div className="tournament-buttons">
             <ConfirmButton label="オークション" type="button" onClick={() => navigate("/auction")} />

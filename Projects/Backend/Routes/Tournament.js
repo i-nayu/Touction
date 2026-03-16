@@ -102,6 +102,7 @@ function classifyTxError(error) {
 }
 
 let isGiveVoteProcessing = false;
+const voteProcessingUsers = new Set();
 
 // =====================================================================
 // HTML送信API
@@ -428,6 +429,11 @@ router.post('/Vote', async (req, res) => {
     const userAddress = GetAddress("testnet", textPrivateKey); //投票者のアドレス
     const nodeUrl = 'https://sym-test-01.opening-line.jp:3001';
 
+    if (voteProcessingUsers.has(userAddress)) {
+        return res.status(429).json({ message: "投票処理中です。完了までお待ちください。" });
+    }
+    voteProcessingUsers.add(userAddress);
+
 
     try {
         //投票先のaddressを取得
@@ -460,6 +466,8 @@ router.post('/Vote', async (req, res) => {
         }
         const mosaicIdHex = mosaicId[0].MosaicID;
 
+        let voteReserved = false;
+
         //投票権があるかどうか
         try {
             if (!users.length) {
@@ -477,6 +485,17 @@ router.post('/Vote', async (req, res) => {
                 console.log("No Vote to Right");
                 return res.status(400).json({ message: "投票権がありません" });
             }
+
+            const reserveVoteResult = await DBPerf(
+                "Reserve vote",
+                "UPDATE Vote SET Vote = true WHERE Address = ? AND Vote = false",
+                [userAddress]
+            );
+
+            if (!reserveVoteResult || reserveVoteResult.affectedRows !== 1) {
+                return res.status(400).json({ message: "このトーナメントでは既に投票済みです" });
+            }
+            voteReserved = true;
 
 
         } catch (txErr) {
@@ -528,17 +547,22 @@ router.post('/Vote', async (req, res) => {
             console.log("[Vote] Vote To Server TX Hash:", voteResult.hash);
             console.log("[Vote] Vote To Server TX Announced Successfully!");
 
-            await DBPerf(
-                "Update vote",
-                "UPDATE Vote SET Vote = true WHERE Address = ?",
-                [userAddress]
-            );
-
             res.json({
                 message: "投票しました",
                 txHash: voteResult.hash
             });
         } catch (txErr) {
+            if (voteReserved) {
+                try {
+                    await DBPerf(
+                        "Rollback vote",
+                        "UPDATE Vote SET Vote = false WHERE Address = ? AND Vote = true",
+                        [userAddress]
+                    );
+                } catch (rollbackErr) {
+                    console.error("[Vote] Rollback Error:", rollbackErr);
+                }
+            }
             console.error("[Vote] Vote To Server TX Error:", txErr);
             const txError = classifyTxError(txErr);
             return res.status(txError.status).json({ message: txError.message });
@@ -550,6 +574,8 @@ router.post('/Vote', async (req, res) => {
         console.error("[Vote] Vote TX Error:", txErr);
         const txError = classifyTxError(txErr);
         return res.status(txError.status).json({ message: txError.message });
+    } finally {
+        voteProcessingUsers.delete(userAddress);
     }
 });
 
